@@ -71,7 +71,7 @@ fun SettingsScreen(
                             Column {
                                 Text("系統與模型設定", fontWeight = FontWeight.Bold)
                                 Text(
-                                    text = "偏好外觀 · 地端模型 · 朗讀語音",
+                                    text = "外觀與顯示 · 地端模型 · 朗讀語音",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -92,7 +92,7 @@ fun SettingsScreen(
                 }
             SecondaryTabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
                 listOf(
-                    "外觀主題" to Icons.Default.Palette,
+                    "外觀與顯示" to Icons.Default.Palette,
                     "語言模型" to Icons.Default.SmartToy,
                     "語音朗讀" to Icons.Default.RecordVoiceOver
                 ).forEachIndexed { index, (label, icon) ->
@@ -126,12 +126,12 @@ fun SettingsScreen(
         ) {
             SettingsPageHeading(
                 title = when (selectedTab) {
-                    0 -> "定制 GemAgora 意境"
+                    0 -> "定制 GemAgora 外觀與顯示"
                     1 -> "管理本地端 Gemma 4 AI"
                     else -> "哲學語音朗讀與聲線"
                 },
                 description = when (selectedTab) {
-                    0 -> "選擇古典雅典金輝或深沉斯多葛冷調，陪伴每一場深刻對話。"
+                    0 -> "選擇古典色彩風格與最適字體大小，陪伴每一場深刻對話。"
                     1 -> "直接於裝置離線運行 Gemma 4，保障 100% 哲學隱私。"
                     else -> "設定蘇格拉底沉穩男聲、阿斯帕齊婭女聲或調諧音調語速，賦予思辨靈動聲音。"
                 }

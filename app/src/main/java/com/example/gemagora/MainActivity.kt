@@ -51,7 +51,8 @@ class MainActivity : ComponentActivity() {
                 darkTheme = isDark,
                 dynamicColor = appearance.useWallpaperColors,
                 customHue = appearance.customHue,
-                customSaturation = appearance.customSaturation
+                customSaturation = appearance.customSaturation,
+                fontScale = appearance.fontScale
             ) {
                 LaunchedEffect(Unit) {
                     app.modelManager.initializeDefaultModels()

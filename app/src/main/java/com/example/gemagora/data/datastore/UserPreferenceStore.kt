@@ -34,6 +34,7 @@ class UserPreferenceStore(private val dataStore: DataStore<Preferences>) {
         private val KEY_CUSTOM_HUE = intPreferencesKey("custom_theme_hue")
         private val KEY_CUSTOM_SATURATION = floatPreferencesKey("custom_theme_saturation")
         private val KEY_CUSTOM_HEX = stringPreferencesKey("custom_primary_hex")
+        private val KEY_FONT_SCALE = floatPreferencesKey("font_scale")
 
         val KEY_SELECTED_LLM_PATH = stringPreferencesKey("selected_llm_path")
         val KEY_SELECTED_LLM_MODEL_ID = stringPreferencesKey("selected_llm_model_id")
@@ -66,12 +67,14 @@ class UserPreferenceStore(private val dataStore: DataStore<Preferences>) {
     val appearanceFlow: Flow<AppearanceSettings> = safePreferencesFlow.map { preferences ->
         val themeModeStr = preferences[KEY_THEME_MODE]
         val themeMode = runCatching { ThemeMode.valueOf(themeModeStr ?: "") }.getOrDefault(ThemeMode.SYSTEM)
+        val fontScale = preferences[KEY_FONT_SCALE] ?: 1.0f
         AppearanceSettings(
             useWallpaperColors = preferences[KEY_WALLPAPER_COLORS] ?: false,
             themeMode = themeMode,
             customHue = preferences[KEY_CUSTOM_HUE]?.coerceIn(0, 359),
             customSaturation = preferences[KEY_CUSTOM_SATURATION]?.coerceIn(0.1f, 1.0f),
             customHex = preferences[KEY_CUSTOM_HEX],
+            fontScale = fontScale.coerceIn(0.80f, 1.50f)
         )
     }
 
@@ -85,6 +88,7 @@ class UserPreferenceStore(private val dataStore: DataStore<Preferences>) {
             else preferences[KEY_CUSTOM_SATURATION] = settings.customSaturation.coerceIn(0.1f, 1.0f)
             if (settings.customHex.isNullOrBlank()) preferences.remove(KEY_CUSTOM_HEX)
             else preferences[KEY_CUSTOM_HEX] = settings.customHex.trim()
+            preferences[KEY_FONT_SCALE] = settings.fontScale.coerceIn(0.80f, 1.50f)
         }
     }
 

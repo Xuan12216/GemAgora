@@ -365,4 +365,24 @@ class GemAgoraQualityTests {
         assertTrue(prompt.contains("<cross_examination>"))
         assertTrue(prompt.contains("<synthesis"))
     }
+
+    @Test
+    fun testFontSizeScaleAndAppearanceSettings() {
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.NORMAL, com.example.gemagora.data.model.FontSizeScale.DEFAULT)
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.SMALL, com.example.gemagora.data.model.FontSizeScale.fromScale(0.85f))
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.NORMAL, com.example.gemagora.data.model.FontSizeScale.fromScale(1.0f))
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.LARGE, com.example.gemagora.data.model.FontSizeScale.fromScale(1.15f))
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.EXTRA_LARGE, com.example.gemagora.data.model.FontSizeScale.fromScale(1.30f))
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.NORMAL, com.example.gemagora.data.model.FontSizeScale.fromScale(null))
+
+        // Closest match
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.SMALL, com.example.gemagora.data.model.FontSizeScale.fromScale(0.88f))
+        assertEquals(com.example.gemagora.data.model.FontSizeScale.LARGE, com.example.gemagora.data.model.FontSizeScale.fromScale(1.18f))
+
+        val defaultSettings = com.example.gemagora.data.model.AppearanceSettings()
+        assertEquals(1.0f, defaultSettings.fontScale, 0.001f)
+
+        val updated = defaultSettings.copy(fontScale = 1.15f)
+        assertEquals(1.15f, updated.fontScale, 0.001f)
+    }
 }
