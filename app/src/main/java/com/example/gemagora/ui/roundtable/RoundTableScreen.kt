@@ -364,24 +364,29 @@ fun RoundTableScreen(
                             Tab(
                                 selected = selectedSection == section,
                                 onClick = { selectedSection = section },
-                                text = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            section.label,
-                                            fontWeight = if (selectedSection == section) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                        if (countBadge != null) {
-                                            Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
-                                                Text(countBadge.toString())
-                                            }
+                                modifier = Modifier.height(52.dp)
+                            ) {
+                                Icon(
+                                    imageVector = section.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = section.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (selectedSection == section) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    if (countBadge != null) {
+                                        Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
+                                            Text(countBadge.toString())
                                         }
                                     }
-                                },
-                                icon = { Icon(section.icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            )
+                                }
+                            }
                         }
                     }
 

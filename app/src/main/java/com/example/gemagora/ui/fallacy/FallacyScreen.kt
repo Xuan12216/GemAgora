@@ -1,30 +1,39 @@
 package com.example.gemagora.ui.fallacy
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.ai.PhilosophicalParser
-import com.example.gemagora.ui.components.ThinkingContent
-
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.gemagora.ui.components.HistoryBottomSheet
+import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
+
+enum class FallacySection(val label: String, val icon: ImageVector) {
+    DIAGNOSIS("謬誤診斷", Icons.Default.WarningAmber),
+    STRUCTURE("形式拆解", Icons.Default.Extension),
+    FOLLOW_UP("反思諮詢", Icons.Default.Forum)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,12 +64,34 @@ fun FallacyScreen(
 
     var showHistorySheet by remember { mutableStateOf(false) }
     var followUpInput by remember { mutableStateOf("") }
+    var selectedSection by remember { mutableStateOf(FallacySection.DIAGNOSIS) }
+    var isConfigExpanded by remember { mutableStateOf(false) }
+    var isThinkingExpanded by remember { mutableStateOf(false) }
+
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     val parsedResult = remember(analysisResult) {
         PhilosophicalParser.parseFallacy(analysisResult)
+    }
+
+    // Auto-switch tabs during streaming generation
+    LaunchedEffect(isGenerating) {
+        if (isGenerating) {
+            isConfigExpanded = false
+        }
+    }
+
+    LaunchedEffect(isGeneratingFollowUp) {
+        if (isGeneratingFollowUp) {
+            selectedSection = FallacySection.FOLLOW_UP
+        }
+    }
+
+    LaunchedEffect(parsedResult.fallacies.size) {
+        if (isGenerating && parsedResult.fallacies.isNotEmpty() && selectedSection == FallacySection.STRUCTURE) {
+            selectedSection = FallacySection.DIAGNOSIS
+        }
     }
 
     val sampleArguments = listOf(
@@ -94,7 +125,11 @@ fun FallacyScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { viewModel.startNewAnalysis() }) {
+                        IconButton(onClick = {
+                            viewModel.startNewAnalysis()
+                            isConfigExpanded = true
+                            selectedSection = FallacySection.DIAGNOSIS
+                        }) {
                             Icon(Icons.Default.Add, contentDescription = "開啟新檢驗")
                         }
                         IconButton(onClick = { showHistorySheet = true }) {
@@ -121,70 +156,129 @@ fun FallacyScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(Modifier.height(padding.calculateTopPadding() + 8.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer
-            ) {
-                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("🔍 輸入欲檢驗之論點或爭論言論", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
-                        value = argumentInput,
-                        onValueChange = { viewModel.setArgumentInput(it) },
-                        placeholder = { Text("貼上任何新聞言論、網路爭辯或個人推論…") },
+
+            // Collapsed Summary Capsule when analysisResult is present
+            if (analysisResult.isNotBlank()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    onClick = { isConfigExpanded = !isConfigExpanded }
+                ) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(130.dp),
-                        maxLines = 6,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    Text("經典謬誤範例快速填入：", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        sampleArguments.forEach { (text, tag) ->
-                            SuggestionChip(
-                                onClick = { viewModel.setArgumentInput(text) },
-                                label = { Text(tag) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "🔍 檢驗言論：$argumentInput",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = if (parsedResult.fallacies.isNotEmpty()) {
+                                    "偵測到 ${parsedResult.fallacies.size} 項謬誤 · 點擊展開可修改言論"
+                                } else if (!isGenerating) {
+                                    "論證形式完備 · 點擊展開可修改言論"
+                                } else {
+                                    "診斷分析進行中…"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                    }
-
-                    Button(
-                        onClick = {
-                            if (isGenerating) {
-                                viewModel.cancelAnalysis()
-                            } else {
-                                viewModel.analyzeArgument()
-                            }
-                        },
-                        enabled = isGenerating || argumentInput.isNotBlank(),
-                        colors = if (isGenerating) {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        IconButton(onClick = { isConfigExpanded = !isConfigExpanded }) {
+                            Icon(
+                                if (isConfigExpanded) Icons.Default.ExpandLess else Icons.Default.Edit,
+                                contentDescription = if (isConfigExpanded) "收合設定" else "調整論點",
+                                tint = MaterialTheme.colorScheme.primary
                             )
-                        } else {
-                            ButtonDefaults.buttonColors()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(
-                            if (isGenerating) Icons.Default.Stop else Icons.Default.Troubleshoot,
-                            contentDescription = null,
-                            Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (isGenerating) "停止診斷" else "進行結構化邏輯診斷")
+                        }
                     }
                 }
             }
 
+            // Full Input & Sample Configuration Card (Animated Collapsible)
+            AnimatedVisibility(
+                visible = isConfigExpanded || analysisResult.isBlank(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer
+                ) {
+                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("🔍 輸入欲檢驗之論點或爭論言論", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = argumentInput,
+                            onValueChange = { viewModel.setArgumentInput(it) },
+                            placeholder = { Text("貼上任何新聞言論、網路爭辯或個人推論…") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(130.dp),
+                            maxLines = 6,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        Text("經典謬誤範例快速填入：", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            sampleArguments.forEach { (text, tag) ->
+                                SuggestionChip(
+                                    onClick = { viewModel.setArgumentInput(text) },
+                                    label = { Text(tag) }
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                if (isGenerating) {
+                                    viewModel.cancelAnalysis()
+                                } else {
+                                    isConfigExpanded = false
+                                    viewModel.analyzeArgument()
+                                }
+                            },
+                            enabled = isGenerating || argumentInput.isNotBlank(),
+                            colors = if (isGenerating) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                if (isGenerating) Icons.Default.Stop else Icons.Default.Troubleshoot,
+                                contentDescription = null,
+                                Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (isGenerating) "停止診斷" else "進行結構化邏輯診斷")
+                        }
+                    }
+                }
+            }
+
+            // Structured Diagnosis Result
             if (analysisResult.isNotBlank() || isGenerating) {
                 if (parsedResult.isStructured) {
-                    // Render Structured Breakdown Cards
                     val fallacyUtteranceId = "fallacy_diagnosis_${currentSessionId}"
                     val isPlayingFallacy = isTtsPlaying && currentSpeakingUtteranceId == fallacyUtteranceId
+
+                    // Header with Title & TTS
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -225,55 +319,41 @@ fun FallacyScreen(
                         }
                     }
 
-                    // 1. Premises & Conclusion Card
-                    if (parsedResult.premises.isNotEmpty() || parsedResult.conclusion != null) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            tonalElevation = 1.dp
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("🧩 論證形式拆解", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-
-                                parsedResult.premises.forEachIndexed { idx, premise ->
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.Top) {
-                                            SuggestionChip(
-                                                onClick = {},
-                                                label = { Text("前提 P${idx + 1}") },
-                                                colors = SuggestionChipDefaults.suggestionChipColors(
-                                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                                )
-                                            )
-                                            Spacer(Modifier.width(10.dp))
-                                            Text(premise, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
-                                        }
-                                    }
-                                }
-
-                                if (parsedResult.conclusion != null) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.Top) {
-                                            SuggestionChip(
-                                                onClick = {},
-                                                label = { Text("結論 C") },
-                                                colors = SuggestionChipDefaults.suggestionChipColors(
-                                                    containerColor = MaterialTheme.colorScheme.secondary,
-                                                    labelColor = MaterialTheme.colorScheme.onSecondary
-                                                )
-                                            )
-                                            Spacer(Modifier.width(10.dp))
-                                            Text(parsedResult.conclusion, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
+                    // Segmented Tabs Header
+                    PrimaryTabRow(
+                        selectedTabIndex = selectedSection.ordinal,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clip(RoundedCornerShape(14.dp))
+                    ) {
+                        FallacySection.entries.forEach { section ->
+                            val countBadge = when (section) {
+                                FallacySection.DIAGNOSIS -> parsedResult.fallacies.size.takeIf { it > 0 }
+                                FallacySection.STRUCTURE -> (parsedResult.premises.size + if (parsedResult.conclusion != null) 1 else 0).takeIf { it > 0 }
+                                FallacySection.FOLLOW_UP -> (followUpTurns.size / 2).takeIf { it > 0 }
+                            }
+                            Tab(
+                                selected = selectedSection == section,
+                                onClick = { selectedSection = section },
+                                modifier = Modifier.height(52.dp)
+                            ) {
+                                Icon(
+                                    imageVector = section.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = section.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (selectedSection == section) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    if (countBadge != null) {
+                                        Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
+                                            Text(countBadge.toString())
                                         }
                                     }
                                 }
@@ -281,246 +361,362 @@ fun FallacyScreen(
                         }
                     }
 
-                    // 2. Fallacy Findings
-                    if (parsedResult.fallacies.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            tonalElevation = 1.dp
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("⚠️ 偵測到的謬誤與無效推論", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    // Tab Contents
+                    when (selectedSection) {
+                        FallacySection.DIAGNOSIS -> {
+                            // 1. Fallacies Findings
+                            if (parsedResult.fallacies.isNotEmpty()) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    tonalElevation = 1.dp
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Text("⚠️ 偵測到的謬誤與無效推論", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
-                                parsedResult.fallacies.forEach { item ->
-                                    val isSound = item.name.contains("無明顯謬誤") || item.type.contains("健全")
-                                    Surface(
-                                        color = if (isSound) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                                        else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                        parsedResult.fallacies.forEach { item ->
+                                            val isSound = item.name.contains("無明顯謬誤") || item.type.contains("健全")
+                                            Surface(
+                                                color = if (isSound) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                                                else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                Text(item.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                                SuggestionChip(
-                                                    onClick = {},
-                                                    label = { Text(item.type, style = MaterialTheme.typography.labelSmall) }
-                                                )
+                                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(item.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                                        SuggestionChip(
+                                                            onClick = {},
+                                                            label = { Text(item.type, style = MaterialTheme.typography.labelSmall) }
+                                                        )
+                                                    }
+                                                    if (item.quote.isNotBlank()) {
+                                                        Text(
+                                                            text = "引述原文：「${item.quote}」",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                    Text(item.explanation, style = MaterialTheme.typography.bodyMedium)
+                                                }
                                             }
-                                            if (item.quote.isNotBlank()) {
-                                                Text(
-                                                    text = "引述原文：「${item.quote}」",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            Text(item.explanation, style = MaterialTheme.typography.bodyMedium)
                                         }
+                                    }
+                                }
+                            } else if (!isGenerating) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                                            Text("未偵測到明顯邏輯謬誤", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                        }
+                                        Text("此論述在形式結構上維持一致性，未出現偷換概念、滑坡論證或訴諸情感等典型無效推論。", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+
+                            // 2. Evaluation & Soundness
+                            if (!parsedResult.evaluation.isNullOrBlank()) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                            Text("論證健全性 (Soundness) 總評", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                        }
+                                        Text(parsedResult.evaluation, style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
                             }
                         }
-                    }
 
-                    // 3. Evaluation & Soundness
-                    if (!parsedResult.evaluation.isNullOrBlank()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                    Text("論證健全性 (Soundness) 總評", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        FallacySection.STRUCTURE -> {
+                            // Premises & Conclusion Card
+                            if (parsedResult.premises.isNotEmpty() || parsedResult.conclusion != null) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    tonalElevation = 1.dp
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Text("🧩 論證形式拆解", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+
+                                        parsedResult.premises.forEachIndexed { idx, premise ->
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                shape = RoundedCornerShape(10.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.Top) {
+                                                    SuggestionChip(
+                                                        onClick = {},
+                                                        label = { Text("前提 P${idx + 1}") },
+                                                        colors = SuggestionChipDefaults.suggestionChipColors(
+                                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                                        )
+                                                    )
+                                                    Spacer(Modifier.width(10.dp))
+                                                    Text(premise, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
+                                                }
+                                            }
+                                        }
+
+                                        if (parsedResult.conclusion != null) {
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                                                shape = RoundedCornerShape(10.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.Top) {
+                                                    SuggestionChip(
+                                                        onClick = {},
+                                                        label = { Text("結論 C") },
+                                                        colors = SuggestionChipDefaults.suggestionChipColors(
+                                                            containerColor = MaterialTheme.colorScheme.secondary,
+                                                            labelColor = MaterialTheme.colorScheme.onSecondary
+                                                        )
+                                                    )
+                                                    Spacer(Modifier.width(10.dp))
+                                                    Text(parsedResult.conclusion, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                                Text(parsedResult.evaluation, style = MaterialTheme.typography.bodyMedium)
+                            }
+
+                            // Counter / Revision Question
+                            if (!parsedResult.counter.isNullOrBlank()) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Icon(Icons.Default.Psychology, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                            Text("反思思考題與論述修正方向", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                        Text(parsedResult.counter, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    // 4. Counter / Revision Question
-                    if (!parsedResult.counter.isNullOrBlank()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(Icons.Default.Psychology, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                    Text("反思思考題與論述修正方向", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        FallacySection.FOLLOW_UP -> {
+                            // Follow-up Turns
+                            if (followUpTurns.isNotEmpty()) {
+                                Text(
+                                    text = "💬 接續論證諮詢歷程",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                followUpTurns.chunked(2).forEach { pair ->
+                                    val userTurn = pair.firstOrNull { it.role == "user" }
+                                    val assistantTurn = pair.firstOrNull { it.role == "assistant" }
+
+                                    if (userTurn != null) {
+                                        Surface(
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text("追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                                Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                            }
+                                        }
+                                    }
+
+                                    if (assistantTurn != null) {
+                                        val turnUtteranceId = "fallacy_turn_${assistantTurn.id}"
+                                        val isSpeakingTurn = isTtsPlaying && currentSpeakingUtteranceId == turnUtteranceId
+                                        Surface(
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text("導師建議：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                                    TtsPlayerControl(
+                                                        isPlaying = isSpeakingTurn,
+                                                        isPaused = isTtsPaused && currentSpeakingUtteranceId == turnUtteranceId,
+                                                        onPlay = { viewModel.speak(assistantTurn.content, turnUtteranceId) },
+                                                        onPause = { viewModel.pauseTts() },
+                                                        onResume = { viewModel.resumeTts() },
+                                                        onStop = { viewModel.stopTts() },
+                                                        iconSize = 16.dp,
+                                                        buttonSize = 28.dp
+                                                    )
+                                                }
+                                                Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                            }
+                                        }
+                                    }
                                 }
-                                Text(parsedResult.counter, style = MaterialTheme.typography.bodyMedium)
                             }
-                        }
-                    }
-                }
 
-                // Raw / Thinking collapsible container
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = if (parsedResult.isStructured) "🧠 完整推理與原生標籤紀錄" else "📊 診斷分析進行中",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                            // Streaming Follow-Up
+                            if (isGeneratingFollowUp) {
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                            Text("導師研擬建議中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                        Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
 
-                        ThinkingContent(
-                            rawText = analysisResult,
-                            isGenerating = isGenerating
-                        )
-                    }
-                }
-
-                // Follow-up Turns
-                if (followUpTurns.isNotEmpty()) {
-                    Text(
-                        text = "💬 接續論證諮詢歷程",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    followUpTurns.chunked(2).forEach { pair ->
-                        val userTurn = pair.firstOrNull { it.role == "user" }
-                        val assistantTurn = pair.firstOrNull { it.role == "assistant" }
-
-                        if (userTurn != null) {
+                            // Follow-up Input Card
                             Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainer,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text("追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                    Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
-                        }
+                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text(
+                                        text = "💡 接續諮詢：修辭防禦與論證改寫",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
 
-                        if (assistantTurn != null) {
-                            val turnUtteranceId = "fallacy_turn_${assistantTurn.id}"
-                            val isSpeakingTurn = isTtsPlaying && currentSpeakingUtteranceId == turnUtteranceId
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        listOf(
+                                            "請提供一段得體但一針見血的一句話反駁話術",
+                                            "如何將此論述重構為邏輯健全的有效論證？",
+                                            "若對方繼續偷換概念，我應當如何維持對話主導權？"
+                                        ).forEach { prompt ->
+                                            SuggestionChip(
+                                                onClick = { followUpInput = prompt },
+                                                label = { Text(prompt, style = MaterialTheme.typography.labelSmall) }
+                                            )
+                                        }
+                                    }
+
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Text("導師建議：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                        TtsPlayerControl(
-                                            isPlaying = isSpeakingTurn,
-                                            isPaused = isTtsPaused && currentSpeakingUtteranceId == turnUtteranceId,
-                                            onPlay = { viewModel.speak(assistantTurn.content, turnUtteranceId) },
-                                            onPause = { viewModel.pauseTts() },
-                                            onResume = { viewModel.resumeTts() },
-                                            onStop = { viewModel.stopTts() },
-                                            iconSize = 16.dp,
-                                            buttonSize = 28.dp
+                                        OutlinedTextField(
+                                            value = followUpInput,
+                                            onValueChange = { followUpInput = it },
+                                            placeholder = { Text("輸入反駁話術諮詢或改寫請求...") },
+                                            modifier = Modifier.weight(1f),
+                                            maxLines = 3,
+                                            shape = RoundedCornerShape(12.dp)
                                         )
+                                        if (isGeneratingFollowUp) {
+                                            IconButton(onClick = { viewModel.cancelFollowUp() }) {
+                                                Icon(Icons.Default.Stop, contentDescription = "停止")
+                                            }
+                                        } else {
+                                            IconButton(
+                                                onClick = {
+                                                    if (followUpInput.isNotBlank()) {
+                                                        viewModel.askFollowUp(followUpInput)
+                                                        followUpInput = ""
+                                                    }
+                                                },
+                                                enabled = followUpInput.isNotBlank() && !isGenerating
+                                            ) {
+                                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "送出")
+                                            }
+                                        }
                                     }
-                                    Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
                     }
-                }
 
-                // Streaming Follow-Up
-                if (isGeneratingFollowUp) {
+                    // Collapsible Raw / Thinking container (Drawer)
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     ) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                Text("導師研擬建議中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { isThinkingExpanded = !isThinkingExpanded },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.Psychology, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                                    Text(
+                                        text = if (parsedResult.isStructured) "完整推理推論與原生標籤 (Debug)" else "📜 原生診斷輸出串流",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(
+                                    if (isThinkingExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = if (isThinkingExpanded) "收合" else "展開",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                            Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
 
-                // Follow-up Input Card
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "💡 接續諮詢：修辭防禦與論證改寫",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            listOf(
-                                "請提供一段得體但一針見血的一句話反駁話術",
-                                "如何將此論述重構為邏輯健全的有效論證？",
-                                "若對方繼續偷換概念，我應當如何維持對話主導權？"
-                            ).forEach { prompt ->
-                                SuggestionChip(
-                                    onClick = { followUpInput = prompt },
-                                    label = { Text(prompt, style = MaterialTheme.typography.labelSmall) }
+                            if (isThinkingExpanded) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                                ThinkingContent(
+                                    rawText = analysisResult,
+                                    isGenerating = isGenerating
                                 )
                             }
                         }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = followUpInput,
-                                onValueChange = { followUpInput = it },
-                                placeholder = { Text("輸入反駁話術諮詢或改寫請求...") },
-                                modifier = Modifier.weight(1f),
-                                maxLines = 3,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            if (isGeneratingFollowUp) {
-                                IconButton(onClick = { viewModel.cancelFollowUp() }) {
-                                    Icon(Icons.Default.Stop, contentDescription = "停止")
-                                }
-                            } else {
-                                IconButton(
-                                    onClick = {
-                                        if (followUpInput.isNotBlank()) {
-                                            viewModel.askFollowUp(followUpInput)
-                                            followUpInput = ""
-                                        }
-                                    },
-                                    enabled = followUpInput.isNotBlank() && !isGenerating
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "送出")
-                                }
+                    }
+                } else {
+                    // Unstructured / Early streaming phase
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Text("AI 正在進行邏輯結構拆解與推論分析…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                             }
+                            ThinkingContent(
+                                rawText = analysisResult,
+                                isGenerating = isGenerating
+                            )
                         }
                     }
                 }
@@ -535,6 +731,8 @@ fun FallacyScreen(
             sessions = historySessions,
             onSelectSession = { record ->
                 viewModel.loadSession(record)
+                isConfigExpanded = false
+                selectedSection = FallacySection.DIAGNOSIS
                 showHistorySheet = false
             },
             onDeleteSession = viewModel::deleteSession,

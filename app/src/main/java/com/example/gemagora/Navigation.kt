@@ -31,9 +31,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -330,7 +328,7 @@ fun MainNavigation(
                     .padding(bottom = animatedBottomPadding)
             ) {
                 val animatedSpacing by animateDpAsState(
-                    targetValue = if (isNavBarCompact) 6.dp else 8.dp,
+                    targetValue = if (isNavBarCompact) 2.dp else 2.dp,
                     animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
                     label = "navSpacing"
                 )
@@ -432,12 +430,12 @@ private fun FloatingDestinationToolbar(
         label = "cornerRadius"
     )
     val animatedSlotSpacing by animateDpAsState(
-        targetValue = if (isCompact) 42.dp else 52.dp,
+        targetValue = if (isCompact) 44.dp else 54.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "slotSpacing"
     )
     val animatedCapsuleWidth by animateDpAsState(
-        targetValue = if (isCompact) 56.dp else 68.dp,
+        targetValue = if (isCompact) 48.dp else 60.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "capsuleWidth"
     )
@@ -457,7 +455,7 @@ private fun FloatingDestinationToolbar(
         label = "endMargin"
     )
     val animatedInnerSlotPadding by animateDpAsState(
-        targetValue = if (isCompact) 11.dp else 13.dp,
+        targetValue = if (isCompact) 6.dp else 8.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "innerSlotPadding"
     )
@@ -530,37 +528,39 @@ private fun FloatingDestinationToolbar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 destinations.forEach { destination ->
-                    val isSelected = destination.route == currentRoute
-                    val iconTint by animateColorAsState(
-                        targetValue = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        animationSpec = tween(durationMillis = 180),
-                        label = "iconTint_${destination.route}"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .width(animatedSlotSpacing)
-                            .fillMaxHeight()
-                            .clip(capsuleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                onNavigate(destination.route)
+                    key(destination.route) {
+                        val isSelected = destination.route == currentRoute
+                        val iconTint by animateColorAsState(
+                            targetValue = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant
                             },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = destination.icon,
-                            contentDescription = destination.label,
-                            tint = iconTint,
-                            modifier = Modifier.size(animatedIconSize)
+                            animationSpec = tween(durationMillis = 180),
+                            label = "iconTint_${destination.route}"
                         )
+
+                        Box(
+                            modifier = Modifier
+                                .width(animatedSlotSpacing)
+                                .fillMaxHeight()
+                                .clip(capsuleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    onNavigate(destination.route)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = destination.icon,
+                                contentDescription = destination.label,
+                                tint = iconTint,
+                                modifier = Modifier.size(animatedIconSize)
+                            )
+                        }
                     }
                 }
             }
