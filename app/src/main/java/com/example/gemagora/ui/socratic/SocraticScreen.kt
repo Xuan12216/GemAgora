@@ -478,9 +478,9 @@ fun SocraticScreen(
                         )
                         .clip(pillShape)
                         .hazeEffect(state = hazeState) {
-                            blurRadius = 6.dp
+                            blurRadius = 15.dp
                             tints = listOf(HazeTint(glassTint))
-                            noiseFactor = 0f
+                            noiseFactor = 20f
                         },
                     shape = pillShape,
                     color = if (isDark) MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.38f)
