@@ -93,7 +93,7 @@ fun SettingsScreen(
             SecondaryTabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
                 listOf(
                     "外觀主題" to Icons.Default.Palette,
-                    "Gemma 4 地端模型" to Icons.Default.SmartToy,
+                    "語言模型" to Icons.Default.SmartToy,
                     "語音朗讀" to Icons.Default.RecordVoiceOver
                 ).forEachIndexed { index, (label, icon) ->
                     Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = {

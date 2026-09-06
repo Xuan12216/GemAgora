@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.ai.PhilosophicalParser
@@ -29,7 +30,8 @@ import com.example.gemagora.ui.components.TtsPlayerControl
 @Composable
 fun FallacyScreen(
     viewModel: FallacyViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: (() -> Unit)? = null,
+    bottomContentPadding: Dp = 0.dp
 ) {
     val argumentInput by viewModel.argumentInput.collectAsStateWithLifecycle()
     val analysisResult by viewModel.analysisResult.collectAsStateWithLifecycle()
@@ -85,8 +87,10 @@ fun FallacyScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            }
                         }
                     },
                     actions = {
@@ -521,7 +525,7 @@ fun FallacyScreen(
                     }
                 }
             }
-            Spacer(Modifier.height(navBarPadding + 24.dp))
+            Spacer(Modifier.height(16.dp + bottomContentPadding))
         }
     }
 

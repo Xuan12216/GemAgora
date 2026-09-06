@@ -9,10 +9,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -74,19 +76,24 @@ fun MainNavigation(
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val glassTint = if (isDark) MaterialTheme.colorScheme.surface.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.12f)
 
-    val primaryDestinations = listOf(
-        BottomDestination("hub", "廣場", Icons.Default.AccountBalance),
-        BottomDestination("experiments", "實驗", Icons.Default.Science),
-        BottomDestination("roundtable", "圓桌", Icons.Default.Forum),
-        BottomDestination("journal", "日記", Icons.Default.AutoStories)
-    )
+    val primaryDestinations = remember {
+        listOf(
+            BottomDestination("hub", "廣場", Icons.Default.AccountBalance),
+            BottomDestination("experiments", "實驗", Icons.Default.Science),
+            BottomDestination("roundtable", "圓桌", Icons.Default.Groups),
+            BottomDestination("fallacy", "謬誤", Icons.Default.Search),
+            BottomDestination("journal", "日記", Icons.AutoMirrored.Filled.MenuBook)
+        )
+    }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
 
-    val isPrimaryRoute = primaryDestinations.any { currentRoute == it.route }
+    val isPrimaryRoute = remember(currentRoute, primaryDestinations) {
+        primaryDestinations.any { currentRoute == it.route }
+    }
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val toolbarContentPadding = 55.dp + navigationBarHeight + 8.dp
+    val toolbarContentPadding = 60.dp + navigationBarHeight + 8.dp
 
     var isNavBarCompact by rememberSaveable { mutableStateOf(false) }
 
@@ -127,16 +134,18 @@ fun MainNavigation(
         }
     }
 
-    val navigateToTopLevel: (String) -> Unit = { route ->
-        val startDestinationId = navController.graph.findStartDestination().id
-        val isStartDestination = route == "hub"
-        isNavBarCompact = false
-        navController.navigate(route) {
-            popUpTo(startDestinationId) {
-                saveState = true
+    val navigateToTopLevel: (String) -> Unit = remember(navController) {
+        { route ->
+            val startDestinationId = navController.graph.findStartDestination().id
+            val isStartDestination = route == "hub"
+            isNavBarCompact = false
+            navController.navigate(route) {
+                popUpTo(startDestinationId) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = !isStartDestination
             }
-            launchSingleTop = true
-            restoreState = !isStartDestination
         }
     }
 
@@ -175,10 +184,10 @@ fun MainNavigation(
                                 navigateToTopLevel("socratic")
                             }
                         },
-                        onNavigateToExperiments = { navController.navigate("experiments") },
-                        onNavigateToRoundTable = { navController.navigate("roundtable") },
-                        onNavigateToFallacy = { navController.navigate("fallacy") },
-                        onNavigateToJournal = { navController.navigate("journal") },
+                        onNavigateToExperiments = { navigateToTopLevel("experiments") },
+                        onNavigateToRoundTable = { navigateToTopLevel("roundtable") },
+                        onNavigateToFallacy = { navigateToTopLevel("fallacy") },
+                        onNavigateToJournal = { navigateToTopLevel("journal") },
                         onNavigateToSettings = { navController.navigate("setup?tab=0") },
                         bottomContentPadding = if (isPrimaryRoute) toolbarContentPadding else 0.dp
                     )
@@ -273,7 +282,8 @@ fun MainNavigation(
                     )
                     FallacyScreen(
                         viewModel = fallacyVm,
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = null,
+                        bottomContentPadding = if (isPrimaryRoute) toolbarContentPadding else 0.dp
                     )
                 }
 
@@ -301,6 +311,12 @@ fun MainNavigation(
                 }
             }
 
+            val animatedBottomPadding by animateDpAsState(
+                targetValue = if (isNavBarCompact) 6.dp else 8.dp,
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
+                label = "bottomPadding"
+            )
+
             // Frosted Glass Floating Bottom Navigation Toolbar
             AnimatedVisibility(
                 visible = isPrimaryRoute,
@@ -308,15 +324,18 @@ fun MainNavigation(
                         slideInVertically(animationSpec = tween(220), initialOffsetY = { it }),
                 exit = fadeOut(animationSpec = tween(160)) +
                         slideOutVertically(animationSpec = tween(160), targetOffsetY = { it }),
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = animatedBottomPadding)
             ) {
                 val animatedSpacing by animateDpAsState(
-                    targetValue = if (isNavBarCompact) 7.dp else 8.dp,
+                    targetValue = if (isNavBarCompact) 6.dp else 8.dp,
                     animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
                     label = "navSpacing"
                 )
                 val animatedSocraticSize by animateDpAsState(
-                    targetValue = if (isNavBarCompact) 48.dp else 55.dp,
+                    targetValue = if (isNavBarCompact) 48.dp else 56.dp,
                     animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
                     label = "socraticSize"
                 )
@@ -325,16 +344,8 @@ fun MainNavigation(
                     animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
                     label = "socraticIconSize"
                 )
-                val animatedBottomPadding by animateDpAsState(
-                    targetValue = if (isNavBarCompact) 7.dp else 8.dp,
-                    animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-                    label = "bottomPadding"
-                )
 
                 Row(
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .padding(bottom = animatedBottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(animatedSpacing),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -411,7 +422,7 @@ private fun FloatingDestinationToolbar(
     }
 
     val animatedHeight by animateDpAsState(
-        targetValue = if (isCompact) 48.dp else 55.dp,
+        targetValue = if (isCompact) 48.dp else 56.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "toolbarHeight"
     )
@@ -420,49 +431,54 @@ private fun FloatingDestinationToolbar(
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "cornerRadius"
     )
-    val animatedInnerPadding by animateDpAsState(
-        targetValue = if (isCompact) 6.dp else 7.5.dp,
+    val animatedSlotSpacing by animateDpAsState(
+        targetValue = if (isCompact) 42.dp else 52.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-        label = "innerPadding"
+        label = "slotSpacing"
     )
-    val animatedButtonHeight by animateDpAsState(
-        targetValue = if (isCompact) 36.dp else 40.dp,
+    val animatedCapsuleWidth by animateDpAsState(
+        targetValue = if (isCompact) 56.dp else 68.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-        label = "buttonHeight"
+        label = "capsuleWidth"
     )
-    val animatedButtonRadius by animateDpAsState(
-        targetValue = if (isCompact) 18.dp else 20.dp,
+    val animatedCapsuleHeight by animateDpAsState(
+        targetValue = if (isCompact) 40.dp else 46.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-        label = "buttonRadius"
+        label = "capsuleHeight"
     )
-    val animatedSelectedPadH by animateDpAsState(
-        targetValue = if (isCompact) 9.dp else 10.dp,
+    val animatedCapsuleRadius by animateDpAsState(
+        targetValue = if (isCompact) 20.dp else 23.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-        label = "selectedPadH"
+        label = "capsuleRadius"
     )
-    val animatedUnselectedPadH by animateDpAsState(
-        targetValue = if (isCompact) 8.5.dp else 10.dp,
+    val animatedEndMargin by animateDpAsState(
+        targetValue = if (isCompact) 4.dp else 5.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-        label = "unselectedPadH"
+        label = "endMargin"
+    )
+    val animatedInnerSlotPadding by animateDpAsState(
+        targetValue = if (isCompact) 11.dp else 13.dp,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
+        label = "innerSlotPadding"
     )
     val animatedIconSize by animateDpAsState(
-        targetValue = if (isCompact) 17.dp else 19.dp,
+        targetValue = if (isCompact) 21.dp else 24.dp,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "iconSize"
     )
-    val animatedFontSize by animateDpAsState(
-        targetValue = if (isCompact) 13.dp else 14.dp,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-        label = "fontSize"
-    )
-    val animatedIconSpacing by animateDpAsState(
-        targetValue = if (isCompact) 5.dp else 6.dp,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-        label = "iconSpacing"
-    )
 
     val pillShape = RoundedCornerShape(animatedCornerRadius)
-    val buttonShape = RoundedCornerShape(animatedButtonRadius)
+    val capsuleShape = RoundedCornerShape(animatedCapsuleRadius)
+
+    val selectedIndex = destinations.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    val animatedCapsuleOffset by animateDpAsState(
+        targetValue = animatedEndMargin + (animatedSlotSpacing.value * selectedIndex).dp,
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "capsuleOffset"
+    )
 
     Surface(
         modifier = modifier
@@ -490,61 +506,60 @@ private fun FloatingDestinationToolbar(
         ),
         shadowElevation = 0.dp
     ) {
-        Row(
-            modifier = Modifier.padding(animatedInnerPadding),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier.fillMaxHeight(),
+            contentAlignment = Alignment.CenterStart
         ) {
-            destinations.forEach { destination ->
-                val isSelected = destination.route == currentRoute
-                if (isSelected) {
+            // Sliding Capsule Indicator (underlay that overlaps into adjacent slot space)
+            Box(
+                modifier = Modifier
+                    .offset(x = animatedCapsuleOffset)
+                    .size(width = animatedCapsuleWidth, height = animatedCapsuleHeight)
+                    .clip(capsuleShape)
+                    .background(
+                        if (isDark) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.82f)
+                        else MaterialTheme.colorScheme.primaryContainer
+                    )
+            )
+
+            // Equal-spaced Stationary Icon Slots
+            Row(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = animatedInnerSlotPadding),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                destinations.forEach { destination ->
+                    val isSelected = destination.route == currentRoute
+                    val iconTint by animateColorAsState(
+                        targetValue = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        animationSpec = tween(durationMillis = 180),
+                        label = "iconTint_${destination.route}"
+                    )
+
                     Box(
                         modifier = Modifier
-                            .height(animatedButtonHeight)
-                            .clip(buttonShape)
-                            .background(
-                                if (isDark) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.82f)
-                                else MaterialTheme.colorScheme.primaryContainer
-                            )
-                            .clickable { onNavigate(destination.route) }
-                            .padding(horizontal = animatedSelectedPadH),
+                            .width(animatedSlotSpacing)
+                            .fillMaxHeight()
+                            .clip(capsuleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                onNavigate(destination.route)
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = destination.icon,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(animatedIconSize)
-                            )
-                            Spacer(Modifier.width(animatedIconSpacing))
-                            Text(
-                                text = destination.label,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontSize = animatedFontSize.value.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                        }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .height(animatedButtonHeight)
-                            .clip(buttonShape)
-                            .clickable { onNavigate(destination.route) }
-                            .padding(horizontal = animatedUnselectedPadH),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = destination.label,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontSize = animatedFontSize.value.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                        Icon(
+                            imageVector = destination.icon,
+                            contentDescription = destination.label,
+                            tint = iconTint,
+                            modifier = Modifier.size(animatedIconSize)
                         )
                     }
                 }

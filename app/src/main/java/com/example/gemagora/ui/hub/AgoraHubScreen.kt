@@ -248,7 +248,7 @@ fun AgoraHubScreen(
         )
 
         AgoraFeatureCard(
-            icon = Icons.Default.QuestionAnswer,
+            icon = Icons.Default.Psychology,
             title = "蘇格拉底詰問對話",
             subtitle = "Socratic Elenchus",
             description = "AI 不直接給出答案，而是透過追問、概念辨析與邏輯審視，揭露矛盾並引導自我發現本質。",
@@ -257,7 +257,7 @@ fun AgoraHubScreen(
         )
 
         AgoraFeatureCard(
-            icon = Icons.Default.Tune,
+            icon = Icons.Default.Science,
             title = "思想實驗模擬器",
             subtitle = "Thought Experiments",
             description = "內建電車難題、無知之幕、忒修斯之船、缸中之腦。調整情境變數，即時推演各倫理學派抉擇。",
