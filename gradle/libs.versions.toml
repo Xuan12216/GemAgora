@@ -13,6 +13,8 @@ room = "2.8.4"
 datastore = "1.1.1"
 navigationCompose = "2.8.5"
 litertlm = "0.13.1"
+biometric = "1.2.0-alpha05"
+fragmentKtx = "1.8.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -45,6 +47,10 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 
 # MediaPipe / LiteRT
 mediapipe-tasks-genai = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlm" }
+
+# Security & Biometrics
+androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragmentKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

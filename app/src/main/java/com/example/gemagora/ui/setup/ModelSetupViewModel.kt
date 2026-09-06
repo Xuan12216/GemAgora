@@ -11,6 +11,7 @@ import com.example.gemagora.data.model.AppearanceSettings
 import com.example.gemagora.data.model.ContextTokenLimits
 import com.example.gemagora.data.model.LocalModelInfo
 import com.example.gemagora.data.model.ModelType
+import com.example.gemagora.data.model.SecuritySettings
 import com.example.gemagora.data.model.TtsSettings
 import com.example.gemagora.data.model.VoiceInfo
 import com.example.gemagora.data.repository.ModelRepository
@@ -65,6 +66,41 @@ class ModelSetupViewModel(
 
     fun stopTts() {
         ttsManager.stop()
+    }
+
+    val securitySettings: StateFlow<SecuritySettings> = userPreferenceStore.securitySettingsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SecuritySettings())
+
+    suspend fun verifyPin(pin: String): Boolean = userPreferenceStore.verifyPin(pin)
+
+    fun setPin(pin: String) {
+        viewModelScope.launch {
+            userPreferenceStore.setPin(pin)
+        }
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferenceStore.setAppLockEnabled(enabled)
+        }
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferenceStore.setBiometricEnabled(enabled)
+        }
+    }
+
+    fun setAutoLockTimeout(seconds: Long) {
+        viewModelScope.launch {
+            userPreferenceStore.setAutoLockTimeout(seconds)
+        }
+    }
+
+    fun clearPin() {
+        viewModelScope.launch {
+            userPreferenceStore.clearPin()
+        }
     }
 
     val maxTokens: StateFlow<Int> = userPreferenceStore.maxTokensFlow

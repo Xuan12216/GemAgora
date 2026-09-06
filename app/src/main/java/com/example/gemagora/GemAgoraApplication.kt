@@ -29,11 +29,34 @@ class GemAgoraApplication : Application() {
     lateinit var gemmaHelper: GemmaLocalHelper
     lateinit var modelManager: ModelManager
     lateinit var ttsManager: com.example.gemagora.service.tts.TtsManager
+    lateinit var appLockManager: com.example.gemagora.security.AppLockManager
 
     override fun onCreate() {
         super.onCreate()
         database = AppDatabase.getDatabase(this)
         userPreferenceStore = UserPreferenceStore(this)
+        appLockManager = com.example.gemagora.security.AppLockManager(userPreferenceStore)
+
+        var activityCount = 0
+        var isChangingConfig = false
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) {}
+            override fun onActivityStarted(activity: android.app.Activity) {
+                if (++activityCount == 1 && !isChangingConfig) {
+                    appLockManager.onAppForeground()
+                }
+            }
+            override fun onActivityResumed(activity: android.app.Activity) {}
+            override fun onActivityPaused(activity: android.app.Activity) {}
+            override fun onActivityStopped(activity: android.app.Activity) {
+                isChangingConfig = activity.isChangingConfigurations
+                if (--activityCount == 0 && !isChangingConfig) {
+                    appLockManager.onAppBackground()
+                }
+            }
+            override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) {}
+            override fun onActivityDestroyed(activity: android.app.Activity) {}
+        })
 
         modelRepository = ModelRepository(database.modelDao())
         chatRepository = ChatRepository(database.chatDao())

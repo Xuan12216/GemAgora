@@ -1,9 +1,14 @@
 package com.example.gemagora.ui.setup
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
@@ -22,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.example.gemagora.data.model.AppearanceSettings
 import com.example.gemagora.data.model.FontSizeScale
 import com.example.gemagora.data.model.ThemeMode
@@ -58,7 +66,7 @@ internal fun AppearanceSettingsCard(settings: AppearanceSettings, onChange: (App
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun ThemeColorSettingsCard(settings: AppearanceSettings, onChange: (AppearanceSettings) -> Unit) {
     var hue by remember(settings.customHue) { mutableFloatStateOf((settings.customHue ?: 45).toFloat()) }
@@ -223,7 +231,43 @@ internal fun ThemeColorSettingsCard(settings: AppearanceSettings, onChange: (App
             }
 
             // 6. HEX 色碼自訂輸入
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val hexBringIntoViewRequester = remember { BringIntoViewRequester() }
+            val coroutineScope = rememberCoroutineScope()
+            var isHexFocused by remember { mutableStateOf(false) }
+            val imeBottomDp = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+            val hexInteractionSource = remember { MutableInteractionSource() }
+
+            LaunchedEffect(isHexFocused) {
+                if (isHexFocused) {
+                    delay(250)
+                    hexBringIntoViewRequester.bringIntoView()
+                }
+            }
+
+            LaunchedEffect(imeBottomDp) {
+                if (imeBottomDp > 0.dp && isHexFocused) {
+                    delay(100)
+                    hexBringIntoViewRequester.bringIntoView()
+                }
+            }
+
+            LaunchedEffect(hexInteractionSource) {
+                hexInteractionSource.interactions.collect { interaction ->
+                    if (interaction is PressInteraction.Release) {
+                        coroutineScope.launch {
+                            delay(250)
+                            hexBringIntoViewRequester.bringIntoView()
+                        }
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewRequester(hexBringIntoViewRequester),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text("自訂 HEX 色碼", style = MaterialTheme.typography.titleSmall)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -239,7 +283,18 @@ internal fun ThemeColorSettingsCard(settings: AppearanceSettings, onChange: (App
                         label = { Text("色碼 (如 #C59B27)") },
                         singleLine = true,
                         isError = hexError,
-                        modifier = Modifier.weight(1f),
+                        interactionSource = hexInteractionSource,
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { focusState ->
+                                isHexFocused = focusState.isFocused
+                                if (focusState.isFocused) {
+                                    coroutineScope.launch {
+                                        delay(250)
+                                        hexBringIntoViewRequester.bringIntoView()
+                                    }
+                                }
+                            },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = {
                             val parsed = ColorUtils.hexToHsl(hexInputText)

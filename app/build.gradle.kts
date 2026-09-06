@@ -87,6 +87,10 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
+    // Biometric & Fragment
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment.ktx)
+
     // MediaPipe / LiteRT-LM
     implementation(libs.mediapipe.tasks.genai)
 

@@ -385,4 +385,61 @@ class GemAgoraQualityTests {
         val updated = defaultSettings.copy(fontScale = 1.15f)
         assertEquals(1.15f, updated.fontScale, 0.001f)
     }
+
+    @Test
+    fun testSecurityCryptoUtilsPinHashingAndVerification() {
+        val salt1 = com.example.gemagora.security.SecurityCryptoUtils.generateSalt()
+        val salt2 = com.example.gemagora.security.SecurityCryptoUtils.generateSalt()
+
+        assertNotNull(salt1)
+        assertNotNull(salt2)
+        assertNotEquals("Different salts should be generated", salt1, salt2)
+
+        val pin = "1234"
+        val hash1 = com.example.gemagora.security.SecurityCryptoUtils.hashPin(pin, salt1)
+        val hash2 = com.example.gemagora.security.SecurityCryptoUtils.hashPin(pin, salt2)
+
+        assertNotEquals("Hashes with different salts must differ", hash1, hash2)
+
+        // Correct PIN
+        assertTrue(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("1234", salt1, hash1))
+        assertTrue(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("1234", salt2, hash2))
+
+        // Incorrect PIN
+        assertFalse(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("0000", salt1, hash1))
+        assertFalse(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("1235", salt1, hash1))
+        assertFalse(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("12345", salt1, hash1))
+    }
+
+    @Test
+    fun testSecuritySettingsModel() {
+        val defaultSettings = com.example.gemagora.data.model.SecuritySettings()
+        assertFalse(defaultSettings.isAppLockEnabled)
+        assertFalse(defaultSettings.isBiometricEnabled)
+        assertFalse(defaultSettings.hasPin)
+        assertEquals(0L, defaultSettings.autoLockTimeoutSeconds)
+        assertEquals("立即鎖定", defaultSettings.autoLockTimeoutLabel)
+
+        val oneMin = defaultSettings.copy(autoLockTimeoutSeconds = 60L)
+        assertEquals("閒置 1 分鐘", oneMin.autoLockTimeoutLabel)
+
+        val fiveMin = defaultSettings.copy(autoLockTimeoutSeconds = 300L)
+        assertEquals("閒置 5 分鐘", fiveMin.autoLockTimeoutLabel)
+
+        val fifteenMin = defaultSettings.copy(autoLockTimeoutSeconds = 900L)
+        assertEquals("閒置 15 分鐘", fifteenMin.autoLockTimeoutLabel)
+
+        assertEquals(4, com.example.gemagora.data.model.SecuritySettings.TIMEOUT_OPTIONS.size)
+
+        // 6-digit PIN support test
+        val sixDigitPin = "987654"
+        val salt = com.example.gemagora.security.SecurityCryptoUtils.generateSalt()
+        val hash = com.example.gemagora.security.SecurityCryptoUtils.hashPin(sixDigitPin, salt)
+        assertTrue(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("987654", salt, hash))
+        assertFalse(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("987653", salt, hash))
+        assertFalse(com.example.gemagora.security.SecurityCryptoUtils.verifyPin("9876", salt, hash))
+
+        val sixDigitSettings = defaultSettings.copy(pinLength = 6)
+        assertEquals(6, sixDigitSettings.pinLength)
+    }
 }

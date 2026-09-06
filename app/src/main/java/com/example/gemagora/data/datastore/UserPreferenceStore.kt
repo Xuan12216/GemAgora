@@ -6,8 +6,10 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.gemagora.data.model.AppearanceSettings
 import com.example.gemagora.data.model.ContextTokenLimits
+import com.example.gemagora.data.model.SecuritySettings
 import com.example.gemagora.data.model.ThemeMode
 import com.example.gemagora.data.model.TtsSettings
+import com.example.gemagora.security.SecurityCryptoUtils
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -62,6 +64,14 @@ class UserPreferenceStore(private val dataStore: DataStore<Preferences>) {
         val KEY_TTS_PITCH = floatPreferencesKey("tts_pitch")
         val KEY_TTS_SPEED = floatPreferencesKey("tts_speed")
         val KEY_TTS_PRESET_ID = stringPreferencesKey("tts_preset_id")
+
+        // Security & App Lock preferences
+        val KEY_APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
+        val KEY_APP_LOCK_PIN_HASH = stringPreferencesKey("app_lock_pin_hash")
+        val KEY_APP_LOCK_PIN_SALT = stringPreferencesKey("app_lock_pin_salt")
+        val KEY_APP_LOCK_PIN_LENGTH = intPreferencesKey("app_lock_pin_length")
+        val KEY_BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
+        val KEY_AUTO_LOCK_TIMEOUT_SECONDS = longPreferencesKey("auto_lock_timeout_seconds")
     }
 
     val appearanceFlow: Flow<AppearanceSettings> = safePreferencesFlow.map { preferences ->
@@ -208,6 +218,71 @@ class UserPreferenceStore(private val dataStore: DataStore<Preferences>) {
             preferences[KEY_TTS_PITCH] = settings.pitch
             preferences[KEY_TTS_SPEED] = settings.speed
             preferences[KEY_TTS_PRESET_ID] = settings.presetId
+        }
+    }
+
+    val securitySettingsFlow: Flow<SecuritySettings> = safePreferencesFlow.map { preferences ->
+        val isLockEnabled = preferences[KEY_APP_LOCK_ENABLED] ?: false
+        val pinHash = preferences[KEY_APP_LOCK_PIN_HASH]
+        val isBiometricEnabled = preferences[KEY_BIOMETRIC_ENABLED] ?: false
+        val timeout = preferences[KEY_AUTO_LOCK_TIMEOUT_SECONDS] ?: 0L
+        val pinLength = preferences[KEY_APP_LOCK_PIN_LENGTH] ?: 6
+        SecuritySettings(
+            isAppLockEnabled = isLockEnabled && !pinHash.isNullOrBlank(),
+            isBiometricEnabled = isBiometricEnabled,
+            hasPin = !pinHash.isNullOrBlank(),
+            autoLockTimeoutSeconds = timeout,
+            pinLength = pinLength
+        )
+    }
+
+    suspend fun setPin(pin: String) {
+        val salt = SecurityCryptoUtils.generateSalt()
+        val hash = SecurityCryptoUtils.hashPin(pin, salt)
+        dataStore.edit { preferences ->
+            preferences[KEY_APP_LOCK_PIN_SALT] = salt
+            preferences[KEY_APP_LOCK_PIN_HASH] = hash
+            preferences[KEY_APP_LOCK_PIN_LENGTH] = pin.length
+            preferences[KEY_APP_LOCK_ENABLED] = true
+        }
+    }
+
+    suspend fun verifyPin(pin: String): Boolean {
+        val preferences = safePreferencesFlow.first()
+        val salt = preferences[KEY_APP_LOCK_PIN_SALT] ?: return false
+        val hash = preferences[KEY_APP_LOCK_PIN_HASH] ?: return false
+        val isValid = SecurityCryptoUtils.verifyPin(pin, salt, hash)
+        if (isValid && preferences[KEY_APP_LOCK_PIN_LENGTH] == null) {
+            dataStore.edit { it[KEY_APP_LOCK_PIN_LENGTH] = pin.length }
+        }
+        return isValid
+    }
+
+    suspend fun setAppLockEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_APP_LOCK_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setBiometricEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_BIOMETRIC_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setAutoLockTimeout(seconds: Long) {
+        dataStore.edit { preferences ->
+            preferences[KEY_AUTO_LOCK_TIMEOUT_SECONDS] = seconds
+        }
+    }
+
+    suspend fun clearPin() {
+        dataStore.edit { preferences ->
+            preferences.remove(KEY_APP_LOCK_PIN_HASH)
+            preferences.remove(KEY_APP_LOCK_PIN_SALT)
+            preferences.remove(KEY_APP_LOCK_PIN_LENGTH)
+            preferences[KEY_APP_LOCK_ENABLED] = false
+            preferences[KEY_BIOMETRIC_ENABLED] = false
         }
     }
 }
