@@ -8,6 +8,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,9 +49,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.data.model.ChatMessage
 import com.example.gemagora.data.model.ModelLoadState
+import com.example.gemagora.ui.components.CopyIconButton
 import com.example.gemagora.ui.components.HistoryBottomSheet
 import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
+import androidx.compose.foundation.text.selection.SelectionContainer
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -100,10 +104,20 @@ fun SocraticScreen(
     var isInputCompact by rememberSaveable { mutableStateOf(false) }
     var isInputFocused by remember { mutableStateOf(false) }
 
+    val inputInteractionSource = remember { MutableInteractionSource() }
+    LaunchedEffect(inputInteractionSource) {
+        inputInteractionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Press || interaction is PressInteraction.Release) {
+                if (isInputCompact) {
+                    isInputCompact = false
+                }
+            }
+        }
+    }
+
     val inputNestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (isInputFocused) return Offset.Zero
                 val delta = available.y
                 // Swiping up (reading downwards): delta < -8f -> shrink input bar
                 // Swiping down (reading upwards / back to top): delta > 8f -> expand input bar
@@ -123,6 +137,8 @@ fun SocraticScreen(
                 // If user reached top edge and pulled down further
                 if (available.y > 0f && isInputCompact) {
                     isInputCompact = false
+                } else if (available.y < 0f && !isInputCompact) {
+                    isInputCompact = true
                 }
                 return Offset.Zero
             }
@@ -477,6 +493,13 @@ fun SocraticScreen(
                             spotColor = Color.Black.copy(alpha = 0.08f)
                         )
                         .clip(pillShape)
+                        .clickable(
+                            enabled = isInputCompact,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            isInputCompact = false
+                        }
                         .hazeEffect(state = hazeState) {
                             blurRadius = 15.dp
                             tints = listOf(HazeTint(glassTint))
@@ -513,7 +536,13 @@ fun SocraticScreen(
                         ) {
                             BasicTextField(
                                 value = inputText,
-                                onValueChange = { inputText = it },
+                                onValueChange = {
+                                    inputText = it
+                                    if (isInputCompact) {
+                                        isInputCompact = false
+                                    }
+                                },
+                                interactionSource = inputInteractionSource,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .onFocusChanged { focusState ->
@@ -666,22 +695,40 @@ fun SocraticMessageBubble(
                         else MaterialTheme.colorScheme.primary
                     )
 
-                    if (!isUser && message.content.isNotBlank() && !isGenerating) {
-                        TtsPlayerControl(
-                            isPlaying = isPlayingThis,
-                            isPaused = isPausedThis,
-                            onPlay = onPlayTts,
-                            onPause = onPauseTts,
-                            onResume = onResumeTts,
-                            onStop = onStopTts,
-                            iconSize = 15.dp,
-                            buttonSize = 26.dp
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        if (!isUser && message.content.isNotBlank() && !isGenerating) {
+                            TtsPlayerControl(
+                                isPlaying = isPlayingThis,
+                                isPaused = isPausedThis,
+                                onPlay = onPlayTts,
+                                onPause = onPauseTts,
+                                onResume = onResumeTts,
+                                onStop = onStopTts,
+                                iconSize = 15.dp,
+                                buttonSize = 26.dp
+                            )
+                        }
+
+                        if (message.content.isNotBlank()) {
+                            CopyIconButton(
+                                textToCopy = message.content,
+                                iconSize = 15.dp,
+                                buttonSize = 26.dp,
+                                tint = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                contentDescription = if (isUser) "複製我的提問" else "複製蘇格拉底回覆"
+                            )
+                        }
                     }
                 }
 
                 if (isUser) {
-                    Text(text = message.content, style = MaterialTheme.typography.bodyMedium)
+                    SelectionContainer {
+                        Text(text = message.content, style = MaterialTheme.typography.bodyMedium)
+                    }
                 } else {
                     ThinkingContent(
                         rawText = message.content,

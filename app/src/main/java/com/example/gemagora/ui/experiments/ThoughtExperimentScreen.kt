@@ -28,6 +28,8 @@ import com.example.gemagora.ai.PhilosophicalParser
 import com.example.gemagora.ui.components.HistoryBottomSheet
 import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
+import com.example.gemagora.ui.components.CopyIconButton
+import androidx.compose.foundation.text.selection.SelectionContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -481,23 +483,36 @@ fun ThoughtExperimentScreen(
                                         }
                                     }
 
-                                    TtsPlayerControl(
-                                        isPlaying = isSpeakingSchool,
-                                        isPaused = isTtsPaused && currentSpeakingUtteranceId == schoolUtteranceId,
-                                        onPlay = { viewModel.speak("${p.fullTitle}。${p.content}", schoolUtteranceId) },
-                                        onPause = { viewModel.pauseTts() },
-                                        onResume = { viewModel.resumeTts() },
-                                        onStop = { viewModel.stopTts() }
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        TtsPlayerControl(
+                                            isPlaying = isSpeakingSchool,
+                                            isPaused = isTtsPaused && currentSpeakingUtteranceId == schoolUtteranceId,
+                                            onPlay = { viewModel.speak("${p.fullTitle}。${p.content}", schoolUtteranceId) },
+                                            onPause = { viewModel.pauseTts() },
+                                            onResume = { viewModel.resumeTts() },
+                                            onStop = { viewModel.stopTts() }
+                                        )
+                                        CopyIconButton(
+                                            textToCopy = p.content,
+                                            iconSize = 16.dp,
+                                            buttonSize = 28.dp,
+                                            contentDescription = "複製${p.title}觀點"
+                                        )
+                                    }
                                 }
 
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                                Text(
-                                    text = p.content,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.25f
-                                )
+                                SelectionContainer {
+                                    Text(
+                                        text = p.content,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.25f
+                                    )
+                                }
 
                                 Spacer(Modifier.height(4.dp))
 
@@ -613,11 +628,27 @@ fun ThoughtExperimentScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                            Text("哲學家深入剖析中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                                Text("哲學家深入剖析中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                            }
+                                            if (!streamingFollowUp.isNullOrBlank()) {
+                                                CopyIconButton(
+                                                    textToCopy = streamingFollowUp ?: "",
+                                                    iconSize = 15.dp,
+                                                    buttonSize = 26.dp,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
-                                        Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                        SelectionContainer {
+                                            Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                        }
                                     }
                                 }
                             }
@@ -642,8 +673,23 @@ fun ThoughtExperimentScreen(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                Text("情境追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                                Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text("情境追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                                    CopyIconButton(
+                                                        textToCopy = userTurn.content,
+                                                        iconSize = 15.dp,
+                                                        buttonSize = 26.dp,
+                                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                                        contentDescription = "複製追問文字"
+                                                    )
+                                                }
+                                                SelectionContainer {
+                                                    Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                }
                                             }
                                         }
                                     }
@@ -663,18 +709,32 @@ fun ThoughtExperimentScreen(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Text("哲學家推演：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                                    TtsPlayerControl(
-                                                        isPlaying = isSpeakingTurn,
-                                                        isPaused = isTtsPaused && currentSpeakingUtteranceId == turnUtteranceId,
-                                                        onPlay = { viewModel.speak(assistantTurn.content, turnUtteranceId) },
-                                                        onPause = { viewModel.pauseTts() },
-                                                        onResume = { viewModel.resumeTts() },
-                                                        onStop = { viewModel.stopTts() },
-                                                        iconSize = 16.dp,
-                                                        buttonSize = 28.dp
-                                                    )
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        TtsPlayerControl(
+                                                            isPlaying = isSpeakingTurn,
+                                                            isPaused = isTtsPaused && currentSpeakingUtteranceId == turnUtteranceId,
+                                                            onPlay = { viewModel.speak(assistantTurn.content, turnUtteranceId) },
+                                                            onPause = { viewModel.pauseTts() },
+                                                            onResume = { viewModel.resumeTts() },
+                                                            onStop = { viewModel.stopTts() },
+                                                            iconSize = 16.dp,
+                                                            buttonSize = 28.dp
+                                                        )
+                                                        CopyIconButton(
+                                                            textToCopy = assistantTurn.content,
+                                                            iconSize = 16.dp,
+                                                            buttonSize = 28.dp,
+                                                            tint = MaterialTheme.colorScheme.secondary,
+                                                            contentDescription = "複製哲學家推演"
+                                                        )
+                                                    }
                                                 }
-                                                Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                SelectionContainer {
+                                                    Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                }
                                             }
                                         }
                                     }
@@ -706,14 +766,25 @@ fun ThoughtExperimentScreen(
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                     if (deductionResult.isNotBlank() && !isGenerating) {
-                                        TtsPlayerControl(
-                                            isPlaying = isSpeakingDeduction,
-                                            isPaused = isTtsPaused && currentSpeakingUtteranceId == deductionUtteranceId,
-                                            onPlay = { viewModel.speak(deductionResult, deductionUtteranceId) },
-                                            onPause = { viewModel.pauseTts() },
-                                            onResume = { viewModel.resumeTts() },
-                                            onStop = { viewModel.stopTts() }
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            TtsPlayerControl(
+                                                isPlaying = isSpeakingDeduction,
+                                                isPaused = isTtsPaused && currentSpeakingUtteranceId == deductionUtteranceId,
+                                                onPlay = { viewModel.speak(deductionResult, deductionUtteranceId) },
+                                                onPause = { viewModel.pauseTts() },
+                                                onResume = { viewModel.resumeTts() },
+                                                onStop = { viewModel.stopTts() }
+                                            )
+                                            CopyIconButton(
+                                                textToCopy = deductionResult,
+                                                iconSize = 16.dp,
+                                                buttonSize = 28.dp,
+                                                contentDescription = "複製推演報告全文"
+                                            )
+                                        }
                                     }
                                 }
 

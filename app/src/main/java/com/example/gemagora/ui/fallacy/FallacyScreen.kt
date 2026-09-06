@@ -28,6 +28,8 @@ import com.example.gemagora.ai.PhilosophicalParser
 import com.example.gemagora.ui.components.HistoryBottomSheet
 import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
+import com.example.gemagora.ui.components.CopyIconButton
+import androidx.compose.foundation.text.selection.SelectionContainer
 
 enum class FallacySection(val label: String, val icon: ImageVector) {
     DIAGNOSIS("謬誤診斷", Icons.Default.WarningAmber),
@@ -308,14 +310,25 @@ fun FallacyScreen(
                                     }
                                 }.ifBlank { analysisResult }
                             }
-                            TtsPlayerControl(
-                                isPlaying = isPlayingFallacy,
-                                isPaused = isTtsPaused && currentSpeakingUtteranceId == fallacyUtteranceId,
-                                onPlay = { viewModel.speak(spokenText, fallacyUtteranceId) },
-                                onPause = { viewModel.pauseTts() },
-                                onResume = { viewModel.resumeTts() },
-                                onStop = { viewModel.stopTts() }
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                TtsPlayerControl(
+                                    isPlaying = isPlayingFallacy,
+                                    isPaused = isTtsPaused && currentSpeakingUtteranceId == fallacyUtteranceId,
+                                    onPlay = { viewModel.speak(spokenText, fallacyUtteranceId) },
+                                    onPause = { viewModel.pauseTts() },
+                                    onResume = { viewModel.resumeTts() },
+                                    onStop = { viewModel.stopTts() }
+                                )
+                                CopyIconButton(
+                                    textToCopy = spokenText,
+                                    iconSize = 16.dp,
+                                    buttonSize = 28.dp,
+                                    contentDescription = "複製診斷報告"
+                                )
+                            }
                         }
                     }
 
@@ -538,8 +551,23 @@ fun FallacyScreen(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                Text("追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                                Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text("追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                                    CopyIconButton(
+                                                        textToCopy = userTurn.content,
+                                                        iconSize = 15.dp,
+                                                        buttonSize = 26.dp,
+                                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                                        contentDescription = "複製追問文字"
+                                                    )
+                                                }
+                                                SelectionContainer {
+                                                    Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                }
                                             }
                                         }
                                     }
@@ -559,18 +587,32 @@ fun FallacyScreen(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Text("導師建議：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                                    TtsPlayerControl(
-                                                        isPlaying = isSpeakingTurn,
-                                                        isPaused = isTtsPaused && currentSpeakingUtteranceId == turnUtteranceId,
-                                                        onPlay = { viewModel.speak(assistantTurn.content, turnUtteranceId) },
-                                                        onPause = { viewModel.pauseTts() },
-                                                        onResume = { viewModel.resumeTts() },
-                                                        onStop = { viewModel.stopTts() },
-                                                        iconSize = 16.dp,
-                                                        buttonSize = 28.dp
-                                                    )
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        TtsPlayerControl(
+                                                            isPlaying = isSpeakingTurn,
+                                                            isPaused = isTtsPaused && currentSpeakingUtteranceId == turnUtteranceId,
+                                                            onPlay = { viewModel.speak(assistantTurn.content, turnUtteranceId) },
+                                                            onPause = { viewModel.pauseTts() },
+                                                            onResume = { viewModel.resumeTts() },
+                                                            onStop = { viewModel.stopTts() },
+                                                            iconSize = 16.dp,
+                                                            buttonSize = 28.dp
+                                                        )
+                                                        CopyIconButton(
+                                                            textToCopy = assistantTurn.content,
+                                                            iconSize = 16.dp,
+                                                            buttonSize = 28.dp,
+                                                            tint = MaterialTheme.colorScheme.secondary,
+                                                            contentDescription = "複製導師建議"
+                                                        )
+                                                    }
                                                 }
-                                                Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                SelectionContainer {
+                                                    Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                }
                                             }
                                         }
                                     }
@@ -585,11 +627,27 @@ fun FallacyScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                            Text("導師研擬建議中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                                Text("導師研擬建議中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                            }
+                                            if (!streamingFollowUp.isNullOrBlank()) {
+                                                CopyIconButton(
+                                                    textToCopy = streamingFollowUp ?: "",
+                                                    iconSize = 15.dp,
+                                                    buttonSize = 26.dp,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
-                                        Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                        SelectionContainer {
+                                            Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                        }
                                     }
                                 }
                             }

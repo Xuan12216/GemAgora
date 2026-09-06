@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.data.model.ModelLoadState
 import com.example.gemagora.ui.components.TtsPlayerControl
+import com.example.gemagora.ui.components.CopyIconButton
+import androidx.compose.foundation.text.selection.SelectionContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -207,27 +209,37 @@ fun AgoraHubScreen(
                             iconSize = 16.dp,
                             buttonSize = 28.dp
                         )
+                        CopyIconButton(
+                            textToCopy = "「${todayQuote.quote}」—— ${todayQuote.author}\n審視提問：${todayQuote.reflectionQuestion}",
+                            iconSize = 16.dp,
+                            buttonSize = 28.dp,
+                            contentDescription = "複製每日哲思啟發"
+                        )
                         IconButton(onClick = { viewModel.refreshQuote() }, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Default.Refresh, contentDescription = "更換", modifier = Modifier.size(16.dp))
                         }
                     }
                 }
-                Text(
-                    text = "「${todayQuote.quote}」",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "—— ${todayQuote.author}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                Text(
-                    text = "💡 今日審視提問：${todayQuote.reflectionQuestion}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                SelectionContainer {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "「${todayQuote.quote}」",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "—— ${todayQuote.author}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                        Text(
+                            text = "💡 今日審視提問：${todayQuote.reflectionQuestion}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 FilledTonalButton(
                     onClick = { onNavigateToSocratic("我想探討蘇格拉底對這句話的反思：「${todayQuote.quote}」。${todayQuote.reflectionQuestion}") },
                     modifier = Modifier.fillMaxWidth(),

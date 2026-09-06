@@ -23,6 +23,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.data.model.JournalEntry
 import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
+import com.example.gemagora.ui.components.CopyIconButton
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import java.text.SimpleDateFormat
 import java.util.*
@@ -372,16 +374,24 @@ fun JournalCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                IconButton(
-                    onClick = { showDeleteConfirm = true },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "刪除",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CopyIconButton(
+                        textToCopy = entry.content,
+                        iconSize = 16.dp,
+                        buttonSize = 28.dp,
+                        contentDescription = "複製日記內容"
                     )
+                    IconButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "刪除",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
 
@@ -419,17 +429,19 @@ fun JournalCard(
                     .fillMaxWidth()
                     .animateContentSize()
             ) {
-                Text(
-                    text = entry.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = if (isContentExpanded) Int.MAX_VALUE else 3,
-                    overflow = TextOverflow.Ellipsis,
-                    onTextLayout = { textLayoutResult ->
-                        if (!isContentExpanded && textLayoutResult.hasVisualOverflow) {
-                            canExpandContent = true
+                SelectionContainer {
+                    Text(
+                        text = entry.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = if (isContentExpanded) Int.MAX_VALUE else 3,
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { textLayoutResult ->
+                            if (!isContentExpanded && textLayoutResult.hasVisualOverflow) {
+                                canExpandContent = true
+                            }
                         }
-                    }
-                )
+                    )
+                }
                 if (canExpandContent) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
@@ -543,6 +555,12 @@ fun JournalCard(
                                         onStop = onStopSpeak ?: {},
                                         iconSize = 16.dp,
                                         buttonSize = 28.dp
+                                    )
+                                    CopyIconButton(
+                                        textToCopy = displayGuidance ?: "",
+                                        iconSize = 16.dp,
+                                        buttonSize = 28.dp,
+                                        contentDescription = "複製哲思導引"
                                     )
                                 }
                                 if (isGenerating && onCancel != null) {

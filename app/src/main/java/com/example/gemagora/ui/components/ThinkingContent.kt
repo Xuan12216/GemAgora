@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.foundation.text.selection.SelectionContainer
+
 @Composable
 fun ThinkingContent(
     rawText: String,
@@ -32,11 +34,13 @@ fun ThinkingContent(
     val matches = regex.findAll(rawText).toList()
 
     if (matches.isEmpty()) {
-        Text(
-            text = rawText,
-            style = contentTextStyle,
-            modifier = modifier
-        )
+        SelectionContainer {
+            Text(
+                text = rawText,
+                style = contentTextStyle,
+                modifier = modifier
+            )
+        }
         return
     }
 
@@ -137,7 +141,8 @@ fun ThinkingContent(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp)
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.Top
                         ) {
                             Box(
                                 modifier = Modifier
@@ -149,11 +154,19 @@ fun ThinkingContent(
                                     )
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = thinkingText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
-                                modifier = Modifier.weight(1f)
+                            SelectionContainer(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = thinkingText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+                                )
+                            }
+                            CopyIconButton(
+                                textToCopy = thinkingText,
+                                iconSize = 14.dp,
+                                buttonSize = 24.dp,
+                                cleanReasoningTags = false,
+                                contentDescription = "複製思考過程"
                             )
                         }
                     }
@@ -162,7 +175,9 @@ fun ThinkingContent(
         }
 
         if (contentText.isNotBlank()) {
-            Text(text = contentText, style = contentTextStyle)
+            SelectionContainer {
+                Text(text = contentText, style = contentTextStyle)
+            }
         }
     }
 }

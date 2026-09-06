@@ -25,6 +25,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.ai.PhilosophicalParser
 import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
+import com.example.gemagora.ui.components.CopyIconButton
+import androidx.compose.foundation.text.selection.SelectionContainer
 
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -513,19 +515,32 @@ fun RoundTableScreen(
                                                     )
                                                 }
 
-                                                TtsPlayerControl(
-                                                    isPlaying = isThisSpeaking,
-                                                    isPaused = isThisPaused,
-                                                    onPlay = { viewModel.speakSchool(speech) },
-                                                    onPause = { viewModel.pauseTts() },
-                                                    onResume = { viewModel.resumeTts() },
-                                                    onStop = { viewModel.stopTts() },
-                                                    iconSize = 18.dp,
-                                                    buttonSize = 32.dp
-                                                )
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    TtsPlayerControl(
+                                                        isPlaying = isThisSpeaking,
+                                                        isPaused = isThisPaused,
+                                                        onPlay = { viewModel.speakSchool(speech) },
+                                                        onPause = { viewModel.pauseTts() },
+                                                        onResume = { viewModel.resumeTts() },
+                                                        onStop = { viewModel.stopTts() },
+                                                        iconSize = 18.dp,
+                                                        buttonSize = 32.dp
+                                                    )
+                                                    CopyIconButton(
+                                                        textToCopy = speech.content,
+                                                        iconSize = 18.dp,
+                                                        buttonSize = 32.dp,
+                                                        contentDescription = "複製${speech.schoolName}立論"
+                                                    )
+                                                }
                                             }
                                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                                            Text(speech.content, style = MaterialTheme.typography.bodyMedium)
+                                            SelectionContainer {
+                                                Text(speech.content, style = MaterialTheme.typography.bodyMedium)
+                                            }
                                         }
                                     }
                                 }
@@ -566,7 +581,7 @@ fun RoundTableScreen(
                                                     val cleanTarget = item.target?.replace(Regex("\\(.*\\)"), "")?.removePrefix("被質疑")?.removePrefix("質疑")?.trim()
                                                     Text(
                                                         text = buildString {
-                                                            append(cleanChallenger)
+                                                             append(cleanChallenger)
                                                             if (!cleanTarget.isNullOrBlank()) {
                                                                 append(" ⚔️ 質疑 ")
                                                                 append(cleanTarget)
@@ -580,19 +595,32 @@ fun RoundTableScreen(
                                                     )
                                                 }
 
-                                                TtsPlayerControl(
-                                                    isPlaying = isCrossSpeaking,
-                                                    isPaused = isCrossPaused,
-                                                    onPlay = { viewModel.speakCrossExam(item, idx) },
-                                                    onPause = { viewModel.pauseTts() },
-                                                    onResume = { viewModel.resumeTts() },
-                                                    onStop = { viewModel.stopTts() },
-                                                    iconSize = 18.dp,
-                                                    buttonSize = 32.dp
-                                                )
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    TtsPlayerControl(
+                                                        isPlaying = isCrossSpeaking,
+                                                        isPaused = isCrossPaused,
+                                                        onPlay = { viewModel.speakCrossExam(item, idx) },
+                                                        onPause = { viewModel.pauseTts() },
+                                                        onResume = { viewModel.resumeTts() },
+                                                        onStop = { viewModel.stopTts() },
+                                                        iconSize = 18.dp,
+                                                        buttonSize = 32.dp
+                                                    )
+                                                    CopyIconButton(
+                                                        textToCopy = item.content,
+                                                        iconSize = 18.dp,
+                                                        buttonSize = 32.dp,
+                                                        contentDescription = "複製交鋒質疑"
+                                                    )
+                                                }
                                             }
                                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-                                            Text(item.content, style = MaterialTheme.typography.bodyMedium)
+                                            SelectionContainer {
+                                                Text(item.content, style = MaterialTheme.typography.bodyMedium)
+                                            }
                                         }
                                     }
                                 }
@@ -604,11 +632,25 @@ fun RoundTableScreen(
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Icon(Icons.AutoMirrored.Filled.CompareArrows, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
-                                            Text("⚔️ 各派交鋒與盲點質疑", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Icon(Icons.AutoMirrored.Filled.CompareArrows, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
+                                                Text("⚔️ 各派交鋒與盲點質疑", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                            }
+                                            CopyIconButton(
+                                                textToCopy = parsedResult.crossExamination,
+                                                iconSize = 18.dp,
+                                                buttonSize = 32.dp,
+                                                contentDescription = "複製交鋒總覽"
+                                            )
                                         }
-                                        Text(parsedResult.crossExamination, style = MaterialTheme.typography.bodyMedium)
+                                        SelectionContainer {
+                                            Text(parsedResult.crossExamination, style = MaterialTheme.typography.bodyMedium)
+                                        }
                                     }
                                 }
                             } else {
@@ -640,19 +682,32 @@ fun RoundTableScreen(
                                                 Text("⚖️ 辯證正反合 (Synthesis) 與生活智慧", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                             }
 
-                                            TtsPlayerControl(
-                                                isPlaying = isSynthesisSpeaking,
-                                                isPaused = isSynthesisPaused,
-                                                onPlay = { viewModel.speakSynthesis(parsedResult.synthesis) },
-                                                onPause = { viewModel.pauseTts() },
-                                                onResume = { viewModel.resumeTts() },
-                                                onStop = { viewModel.stopTts() },
-                                                iconSize = 18.dp,
-                                                buttonSize = 32.dp
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                TtsPlayerControl(
+                                                    isPlaying = isSynthesisSpeaking,
+                                                    isPaused = isSynthesisPaused,
+                                                    onPlay = { viewModel.speakSynthesis(parsedResult.synthesis) },
+                                                    onPause = { viewModel.pauseTts() },
+                                                    onResume = { viewModel.resumeTts() },
+                                                    onStop = { viewModel.stopTts() },
+                                                    iconSize = 18.dp,
+                                                    buttonSize = 32.dp
+                                                )
+                                                CopyIconButton(
+                                                    textToCopy = parsedResult.synthesis,
+                                                    iconSize = 18.dp,
+                                                    buttonSize = 32.dp,
+                                                    contentDescription = "複製辯證結論"
+                                                )
+                                            }
                                         }
                                         HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-                                        Text(parsedResult.synthesis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal)
+                                        SelectionContainer {
+                                            Text(parsedResult.synthesis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal)
+                                        }
                                     }
                                 }
                             } else {
@@ -741,8 +796,23 @@ fun RoundTableScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text("追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                    Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("追問：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                        CopyIconButton(
+                                            textToCopy = userTurn.content,
+                                            iconSize = 15.dp,
+                                            buttonSize = 26.dp,
+                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                            contentDescription = "複製追問文字"
+                                        )
+                                    }
+                                    SelectionContainer {
+                                        Text(userTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                    }
                                 }
                             }
                         }
@@ -764,18 +834,32 @@ fun RoundTableScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text("大師回覆：", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                        TtsPlayerControl(
-                                            isPlaying = isTurnSpeaking,
-                                            isPaused = isTurnPaused,
-                                            onPlay = { viewModel.speakFollowUpTurn(assistantTurn.id, assistantTurn.content) },
-                                            onPause = { viewModel.pauseTts() },
-                                            onResume = { viewModel.resumeTts() },
-                                            onStop = { viewModel.stopTts() },
-                                            iconSize = 16.dp,
-                                            buttonSize = 28.dp
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            TtsPlayerControl(
+                                                isPlaying = isTurnSpeaking,
+                                                isPaused = isTurnPaused,
+                                                onPlay = { viewModel.speakFollowUpTurn(assistantTurn.id, assistantTurn.content) },
+                                                onPause = { viewModel.pauseTts() },
+                                                onResume = { viewModel.resumeTts() },
+                                                onStop = { viewModel.stopTts() },
+                                                iconSize = 16.dp,
+                                                buttonSize = 28.dp
+                                            )
+                                            CopyIconButton(
+                                                textToCopy = assistantTurn.content,
+                                                iconSize = 16.dp,
+                                                buttonSize = 28.dp,
+                                                tint = MaterialTheme.colorScheme.secondary,
+                                                contentDescription = "複製大師回覆"
+                                            )
+                                        }
                                     }
-                                    Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                    SelectionContainer {
+                                        Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                    }
                                 }
                             }
                         }
@@ -790,11 +874,27 @@ fun RoundTableScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                Text("大師思辨研擬中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    Text("大師思辨研擬中...", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                }
+                                if (!streamingFollowUp.isNullOrBlank()) {
+                                    CopyIconButton(
+                                        textToCopy = streamingFollowUp ?: "",
+                                        iconSize = 15.dp,
+                                        buttonSize = 26.dp,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
-                            Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                            SelectionContainer {
+                                Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
                     }
                 }
