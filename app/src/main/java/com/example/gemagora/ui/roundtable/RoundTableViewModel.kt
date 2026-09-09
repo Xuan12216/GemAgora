@@ -70,6 +70,136 @@ class RoundTableViewModel(
     private var currentJob: Job? = null
     private var followUpJob: Job? = null
 
+    private val fallbackTopicPool = listOf(
+        listOf(
+            "如何以哲學面對現代精神內耗？",
+            "追求內心寧靜是否等於逃避責任？",
+            "在荒謬的世界中，意義由誰定義？"
+        ),
+        listOf(
+            "科技演算法是否正在剝奪自由意志？",
+            "追求多數人幸福，可以犧牲少數嗎？",
+            "順應自然無為，能否在競爭中立足？"
+        ),
+        listOf(
+            "痛苦是生命的本質還是靈魂的磨練？",
+            "面對無法改變的逆境，臣服還是反抗？",
+            "真正的道德是純粹理性還是同理心？"
+        )
+    )
+
+    private var topicPoolIndex = 0
+
+    private val _topicSuggestions = MutableStateFlow(fallbackTopicPool.first())
+    val topicSuggestions: StateFlow<List<String>> = _topicSuggestions.asStateFlow()
+
+    private val _isTopicAiGenerated = MutableStateFlow(false)
+    val isTopicAiGenerated: StateFlow<Boolean> = _isTopicAiGenerated.asStateFlow()
+
+    private val _isRefreshingTopics = MutableStateFlow(false)
+    val isRefreshingTopics: StateFlow<Boolean> = _isRefreshingTopics.asStateFlow()
+
+    fun refreshTopicSuggestions() {
+        if (_isRefreshingTopics.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        if (isLoaded) {
+            viewModelScope.launch {
+                _isRefreshingTopics.value = true
+                try {
+                    val prompt = PromptBuilder.buildRoundTableTopicSuggestionsPrompt(_topicSuggestions.value)
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _topicSuggestions.value = parsed.take(3)
+                        _isTopicAiGenerated.value = true
+                    } else {
+                        rotateFallbackTopics()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackTopics()
+                } finally {
+                    _isRefreshingTopics.value = false
+                }
+            }
+        } else {
+            rotateFallbackTopics()
+        }
+    }
+
+    private fun rotateFallbackTopics() {
+        topicPoolIndex = (topicPoolIndex + 1) % fallbackTopicPool.size
+        _topicSuggestions.value = fallbackTopicPool[topicPoolIndex]
+        _isTopicAiGenerated.value = false
+    }
+
+    private val fallbackFollowUpPool = listOf(
+        listOf(
+            "請讓斯多葛學派針對此結論提出反思",
+            "如何將此辯證轉化為日常生活實踐？",
+            "面對無常，存在主義與道家如何調和？"
+        ),
+        listOf(
+            "虛無主義在此處是否低估了意義韌性？",
+            "若將結論應用於職場，大師有何指引？",
+            "效益主義推行時會付出何種道德代價？"
+        ),
+        listOf(
+            "佛家緣起性空如何化解各派執念？",
+            "主持人能否給予更具包容性的解方？",
+            "意志軟弱時，崇高的哲學如何著陸？"
+        )
+    )
+
+    private var followUpPoolIndex = 0
+
+    private val _followUpSuggestions = MutableStateFlow(fallbackFollowUpPool.first())
+    val followUpSuggestions: StateFlow<List<String>> = _followUpSuggestions.asStateFlow()
+
+    private val _isFollowUpAiGenerated = MutableStateFlow(false)
+    val isFollowUpAiGenerated: StateFlow<Boolean> = _isFollowUpAiGenerated.asStateFlow()
+
+    private val _isRefreshingFollowUpSuggestions = MutableStateFlow(false)
+    val isRefreshingFollowUpSuggestions: StateFlow<Boolean> = _isRefreshingFollowUpSuggestions.asStateFlow()
+
+    fun refreshFollowUpSuggestions() {
+        if (_isRefreshingFollowUpSuggestions.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        val currentTopic = _topic.value.trim()
+        val currentDebate = _debateResult.value.trim()
+        if (isLoaded && currentDebate.isNotBlank()) {
+            viewModelScope.launch {
+                _isRefreshingFollowUpSuggestions.value = true
+                try {
+                    val prompt = PromptBuilder.buildRoundTableFollowUpSuggestionsPrompt(currentTopic, currentDebate, _followUpSuggestions.value)
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _followUpSuggestions.value = parsed.take(3)
+                        _isFollowUpAiGenerated.value = true
+                    } else {
+                        rotateFallbackFollowUps()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackFollowUps()
+                } finally {
+                    _isRefreshingFollowUpSuggestions.value = false
+                }
+            }
+        } else {
+            rotateFallbackFollowUps()
+        }
+    }
+
+    private fun rotateFallbackFollowUps() {
+        followUpPoolIndex = (followUpPoolIndex + 1) % fallbackFollowUpPool.size
+        _followUpSuggestions.value = fallbackFollowUpPool[followUpPoolIndex]
+        _isFollowUpAiGenerated.value = false
+    }
+
     fun setTopic(newTopic: String) {
         _topic.value = newTopic
     }

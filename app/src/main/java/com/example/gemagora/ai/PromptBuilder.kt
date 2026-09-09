@@ -250,5 +250,215 @@ $followUpQuestion
 3. 請使用繁體中文，親切且專業。
 """.trimIndent()
     }
+
+    private fun formatExcludeConstraint(exclude: List<String>): String {
+        val clean = exclude.map { it.trim() }.filter { it.isNotEmpty() }.take(6)
+        return if (clean.isNotEmpty()) {
+            "【避免重複】請勿提出與以下主題類似或重複的內容：${clean.joinToString("、") { "「$it」" }}\n"
+        } else ""
+    }
+
+    fun buildSocraticTopicSuggestionsPrompt(exclude: List<String> = emptyList()): String {
+        val themes = listOf(
+            "正義與良心之衝突",
+            "自由意志與宿命牽絆",
+            "快樂與苦難之本質",
+            "知識與認知之邊界",
+            "勇氣與道德之抉擇",
+            "真理與輿論之對立"
+        )
+        val angle = themes.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+你是一位熟稔古希臘哲學的導師。請以「$angle」為思考切入點，提供 3 個引人深思且切中當代人困惑的反詰法討論命題。
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式為：
+1. [問題]
+2. [問題]
+3. [問題]
+2. 每個問題字數嚴格限制在 10 到 16 字以內，精簡扼要，直擊核心。
+3. 絕不輸出任何前言或結語，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
+
+    fun buildSocraticFollowUpSuggestionsPrompt(history: List<ChatMessage>, exclude: List<String> = emptyList()): String {
+        val slidingHistory = history.takeLast(4).joinToString("\n") { msg ->
+            if (msg.role == "user") "我：${msg.content.take(50)}"
+            else "蘇格拉底：${msg.content.replace(Regex("<\\|?[^>]*\\|?>"), "").trim().take(50)}"
+        }
+        val strategies = listOf(
+            "指出定義矛盾",
+            "提供極端反例",
+            "追問底層前提",
+            "質疑動機真偽"
+        )
+        val angle = strategies.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+對話者正在與蘇格拉底進行反詰對話。請以「$angle」的方向，根據以下對話摘要，提供 3 個接續反詰或質疑的短問句：
+$slidingHistory
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式為：
+1. [短問句]
+2. [短問句]
+3. [短問句]
+2. 每個問句字數嚴格限制在 8 到 16 字以內，切中要害，切勿冗長。
+3. 絕不輸出任何前言或結語，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
+
+    fun buildRoundTableTopicSuggestionsPrompt(exclude: List<String> = emptyList()): String {
+        val themes = listOf(
+            "科技發展與數位生命之倫理",
+            "生死無常與存在價值之建構",
+            "命運必然與個人自由意志",
+            "社會公義與效益代價之平衡",
+            "慾望執念與精神解脫之追求",
+            "虛無荒謬與積極生活之勇氣"
+        )
+        val angle = themes.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+請以「$angle」為核心切入點，提供 3 個適合斯多葛、存在主義與東方道家哲學交鋒的辯論議題。
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式為：
+1. [議題]
+2. [議題]
+3. [議題]
+2. 每個議題字數嚴格限制在 8 到 14 字以內，精闢簡短。
+3. 絕不輸出任何前言或結語，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
+
+    fun buildRoundTableFollowUpSuggestionsPrompt(topic: String, debateHistory: String, exclude: List<String> = emptyList()): String {
+        val cleanHistory = debateHistory.takeLast(350)
+        val strategies = listOf(
+            "直指主要分歧與盲點",
+            "將學派觀點代入極端情境",
+            "尋求跨學派的調和契機",
+            "挑戰理論在現實中的可行性"
+        )
+        val angle = strategies.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+針對議題「${topic.take(25)}」的交鋒重點，請以「$angle」為角度，為現場聽眾提供 3 個深入追問方向：
+$cleanHistory
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式為：
+1. [追問內容]
+2. [追問內容]
+3. [追問內容]
+2. 每個追問字數嚴格限制在 10 到 16 字以內，直指分歧。
+3. 絕不輸出任何前言或結語，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
+
+    fun buildThoughtExperimentFollowUpSuggestionsPrompt(
+        experimentTitle: String,
+        variablesSummary: String,
+        exclude: List<String> = emptyList()
+    ): String {
+        val angles = listOf(
+            "反轉犧牲者身分與動機",
+            "加入不確定性與資訊迷霧",
+            "將微觀抉擇放大至社會群體",
+            "剝離純理性，拷問情感直覺"
+        )
+        val angle = angles.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+針對思想實驗「$experimentTitle」（變數：${variablesSummary.take(80)}），請以「$angle」的方向提出 3 個極端情境追問：
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式為：
+1. [追問問題]
+2. [追問問題]
+3. [追問問題]
+2. 每個追問字數嚴格限制在 10 到 16 字以內，言簡意賅。
+3. 絕不輸出任何多餘文字，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
+
+    fun buildFallacySampleSuggestionsPrompt(exclude: List<String> = emptyList()): String {
+        val contexts = listOf(
+            "職場溝通與主管員工對話",
+            "社群媒體輿論與時事評論",
+            "家庭關係與人際情感衝突",
+            "廣告行銷話術與消費陷阱",
+            "校園辯論與學術討論盲點"
+        )
+        val angle = contexts.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+請以「$angle」為情境背景，提供 3 個富含邏輯謬誤（如滑坡謬誤、稻草人、非黑即白、訴諸人身）的典型言論範例與標籤。
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式嚴格為：
+1. [言論內容] || [謬誤簡稱標籤]
+2. [言論內容] || [謬誤簡稱標籤]
+3. [言論內容] || [謬誤簡稱標籤]
+2. 言論字數在 10 到 18 字以內，標籤在 2 到 6 字以內。
+3. 絕不輸出任何前言或解釋，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
+
+    fun buildFallacyFollowUpSuggestionsPrompt(
+        argumentText: String,
+        analysisSummary: String,
+        exclude: List<String> = emptyList()
+    ): String {
+        val cleanArg = argumentText.take(50)
+        val cleanSummary = analysisSummary.takeLast(250)
+        val directions = listOf(
+            "優雅拆解對方論點之技巧",
+            "如何將此謬誤改寫為嚴謹論證",
+            "幽默而不失鋒芒的回應話術",
+            "提問引導對方自我察覺矛盾"
+        )
+        val angle = directions.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+針對已分析之言論「$cleanArg」，請以「$angle」為方向，提供 3 個反思與接續諮詢提問：
+$cleanSummary
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式為：
+1. [諮詢提問]
+2. [諮詢提問]
+3. [諮詢提問]
+2. 每個提問字數嚴格限制在 10 到 16 字以內，簡練俐落。
+3. 絕不輸出多餘文字，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
+
+    fun buildJournalPromptSuggestionsPrompt(entryType: String, exclude: List<String> = emptyList()): String {
+        val desc = if (entryType == "morning") "斯多葛晨思（可控與不可控、心靈準備）" else "斯多葛夕省（言行自省、情緒放下）"
+        val angles = if (entryType == "morning") listOf(
+            "如何平靜面對外界挑釁與不可控事件",
+            "今日的核心德行目標與實踐步驟",
+            "如何化解潛在的焦慮與拖延"
+        ) else listOf(
+            "今日言行是否符合內在道德原則",
+            "面對挫折時是否有保持平靜心智",
+            "如何釋懷今日遺憾並安然入眠"
+        )
+        val angle = angles.random()
+        val excludeConstraint = formatExcludeConstraint(exclude)
+        return """
+請針對「$desc」，聚焦於「$angle」，為寫作者提供 3 個自我省思問題。
+$excludeConstraint
+【嚴格輸出要求】
+1. 只輸出 3 行，格式為：
+1. [反思提問]
+2. [反思提問]
+3. [反思提問]
+2. 每個問題字數嚴格限制在 10 到 16 字以內，直指內心。
+3. 絕不輸出任何前言，直接輸出 3 行。使用繁體中文。
+""".trimIndent()
+    }
 }
 

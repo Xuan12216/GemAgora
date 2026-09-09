@@ -83,6 +83,90 @@ class JournalViewModel(
 
     private var currentJob: kotlinx.coroutines.Job? = null
 
+    private val fallbackMorningPrompts = listOf(
+        listOf(
+            "今天何事不可控？如何安頓內心？",
+            "遇無理之人，如何提醒其源自無知？",
+            "今日哪件事最能體現我的實踐美德？"
+        ),
+        listOf(
+            "若今日遭遇阻礙，如何化為基石？",
+            "清晨醒來，我對生命抱持何種感恩？",
+            "今天該警惕哪些無謂的情緒消耗？"
+        )
+    )
+
+    private val fallbackEveningPrompts = listOf(
+        listOf(
+            "今天哪一刻克制？哪刻受情緒牽引？",
+            "今天有為討好他人而違背原則嗎？",
+            "入睡前，有哪些不可控煩惱應放下？"
+        ),
+        listOf(
+            "今天我對他人展現了足夠包容嗎？",
+            "若今天是生命最後一天，我滿意嗎？",
+            "今天有哪些微小進步，值得肯定自己？"
+        )
+    )
+
+    private var morningPoolIndex = 0
+    private var eveningPoolIndex = 0
+
+    private val _reflectionPromptSuggestions = MutableStateFlow(fallbackMorningPrompts.first())
+    val reflectionPromptSuggestions: StateFlow<List<String>> = _reflectionPromptSuggestions.asStateFlow()
+
+    private val _isPromptAiGenerated = MutableStateFlow(false)
+    val isPromptAiGenerated: StateFlow<Boolean> = _isPromptAiGenerated.asStateFlow()
+
+    private val _isRefreshingPrompts = MutableStateFlow(false)
+    val isRefreshingPrompts: StateFlow<Boolean> = _isRefreshingPrompts.asStateFlow()
+
+    fun updatePromptType(type: String) {
+        val pool = if (type == "morning") fallbackMorningPrompts[morningPoolIndex] else fallbackEveningPrompts[eveningPoolIndex]
+        _reflectionPromptSuggestions.value = pool
+        _isPromptAiGenerated.value = false
+    }
+
+    fun refreshReflectionPrompts(type: String) {
+        if (_isRefreshingPrompts.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        if (isLoaded) {
+            viewModelScope.launch {
+                _isRefreshingPrompts.value = true
+                try {
+                    val prompt = PromptBuilder.buildJournalPromptSuggestionsPrompt(type, _reflectionPromptSuggestions.value)
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _reflectionPromptSuggestions.value = parsed.take(3)
+                        _isPromptAiGenerated.value = true
+                    } else {
+                        rotateFallbackPrompts(type)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackPrompts(type)
+                } finally {
+                    _isRefreshingPrompts.value = false
+                }
+            }
+        } else {
+            rotateFallbackPrompts(type)
+        }
+    }
+
+    private fun rotateFallbackPrompts(type: String) {
+        if (type == "morning") {
+            morningPoolIndex = (morningPoolIndex + 1) % fallbackMorningPrompts.size
+            _reflectionPromptSuggestions.value = fallbackMorningPrompts[morningPoolIndex]
+        } else {
+            eveningPoolIndex = (eveningPoolIndex + 1) % fallbackEveningPrompts.size
+            _reflectionPromptSuggestions.value = fallbackEveningPrompts[eveningPoolIndex]
+        }
+        _isPromptAiGenerated.value = false
+    }
+
     fun addEntry(title: String, content: String, type: String) {
         if (content.isBlank()) return
         viewModelScope.launch {

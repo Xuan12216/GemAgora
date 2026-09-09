@@ -456,11 +456,12 @@ class GemmaLocalHelperImpl(private val context: Context) : GemmaLocalHelper {
         val topK = userPreferenceStore.topKFlow.first()
         val topP = userPreferenceStore.topPFlow.first()
         val temp = userPreferenceStore.temperatureFlow.first()
+        val randomSeed = kotlin.random.Random.nextInt(1, 1_000_000)
         val samplerConfig = SamplerConfig(
             topK = topK,
             topP = topP.toDouble(),
             temperature = temp.toDouble(),
-            seed = 0
+            seed = randomSeed
         )
 
         val extra = mapOf<String, Any>(

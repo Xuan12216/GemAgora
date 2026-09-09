@@ -364,4 +364,78 @@ object PhilosophicalParser {
             rawText = rawText
         )
     }
+
+    fun parseSuggestions(rawText: String, maxChars: Int = 24): List<String> {
+        val cleanText = rawText
+            .replace(Regex("<\\|?channel\\|?>[a-zA-Z0-9_]*.*?(?:<channel\\|>|$)", RegexOption.DOT_MATCHES_ALL), "")
+            .replace(Regex("<think>.*?(?:</think>|$)", RegexOption.DOT_MATCHES_ALL), "")
+            .trim()
+
+        val rawList: List<String> = run {
+            // 1. Check for XML-style <suggestion> tags
+            val tagMatches = Regex("<suggestion>(.*?)</suggestion>", RegexOption.DOT_MATCHES_ALL)
+                .findAll(cleanText)
+                .map { it.groupValues[1].trim() }
+                .filter { it.isNotBlank() }
+                .toList()
+            if (tagMatches.isNotEmpty()) return@run tagMatches
+
+            // 2. Parse numbered or bulleted lines: "1. ...", "- ...", "Q1: ..."
+            val lineRegex = Regex("""(?m)^\s*(?:\d+[\.、\)]|[-*•]|Q\d+[:：])\s*(.+)""")
+            val items = lineRegex.findAll(cleanText)
+                .map { it.groupValues[1].trim().trim('"', '「', '」', '`') }
+                .filter { it.isNotBlank() && it.length > 2 && !it.startsWith("以下是") && !it.startsWith("好的") }
+                .toList()
+            if (items.isNotEmpty()) return@run items
+
+            // 3. Fallback: non-empty lines that look like questions or sentences
+            cleanText.lines()
+                .map { it.trim().trim('-', '*', '1', '2', '3', '4', '5', '.', '、', ' ') }
+                .filter { it.isNotBlank() && it.length > 4 && !it.startsWith("以下是") && !it.startsWith("希望這") }
+        }
+
+        return rawList.map { item ->
+            if (item.length > maxChars) {
+                item.take(maxChars - 1).trimEnd('，', '、', '。', '？', '?', '；', ';') + "…"
+            } else {
+                item
+            }
+        }
+    }
+
+    fun parseTaggedSuggestions(
+        rawText: String,
+        maxTextChars: Int = 22,
+        maxTagChars: Int = 8
+    ): List<Pair<String, String>> {
+        val lines = parseSuggestions(rawText, maxChars = 80)
+        return lines.mapNotNull { line ->
+            val pair = if (line.contains("||")) {
+                val parts = line.split("||")
+                if (parts.size >= 2) parts[0] to parts[1] else null
+            } else {
+                val tagMatch = Regex("""[（\(【]([^）\)】]{2,12})[）\)】]""").find(line)
+                if (tagMatch != null) {
+                    val tag = tagMatch.groupValues[1]
+                    val text = line.replace(tagMatch.value, "")
+                    text to tag
+                } else if (line.isNotBlank()) {
+                    line to "典型言論"
+                } else null
+            } ?: return@mapNotNull null
+
+            val text = pair.first.trim().trim('"', '「', '」')
+            val tag = pair.second.trim().trim('[', ']', '(', ')', '【', '】')
+
+            if (text.isNotBlank() && tag.isNotBlank()) {
+                val clampedText = if (text.length > maxTextChars) {
+                    text.take(maxTextChars - 1).trimEnd('，', '、', '。', '？', '?', '；', ';') + "…"
+                } else text
+                val clampedTag = if (tag.length > maxTagChars) {
+                    tag.take(maxTagChars)
+                } else tag
+                clampedText to clampedTag
+            } else null
+        }
+    }
 }

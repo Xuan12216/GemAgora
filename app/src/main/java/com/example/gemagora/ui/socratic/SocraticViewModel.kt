@@ -68,6 +68,135 @@ class SocraticViewModel(
 
     private var currentJob: Job? = null
 
+    private val fallbackStarterPool = listOf(
+        listOf(
+            "什麼是真正的正義？法律即正義嗎？",
+            "未經審視的人生真的不值得過嗎？",
+            "我們追求的是快樂還是生命的意義？"
+        ),
+        listOf(
+            "如果多數人都相信謊言，真理何在？",
+            "自由是為所欲為，還是克制慾望？",
+            "若善行皆有回報，純粹的善存在嗎？"
+        ),
+        listOf(
+            "知識與智慧的界線究竟在哪裡？",
+            "勇氣是無所畏懼還是知恐懼而前行？",
+            "自我是一成不變的還是不斷建構的？"
+        )
+    )
+
+    private var starterPoolIndex = 0
+
+    private val _starterSuggestions = MutableStateFlow(fallbackStarterPool.first())
+    val starterSuggestions: StateFlow<List<String>> = _starterSuggestions.asStateFlow()
+
+    private val _isStarterAiGenerated = MutableStateFlow(false)
+    val isStarterAiGenerated: StateFlow<Boolean> = _isStarterAiGenerated.asStateFlow()
+
+    private val _isRefreshingStarters = MutableStateFlow(false)
+    val isRefreshingStarters: StateFlow<Boolean> = _isRefreshingStarters.asStateFlow()
+
+    fun refreshStarterSuggestions() {
+        if (_isRefreshingStarters.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        if (isLoaded) {
+            viewModelScope.launch {
+                _isRefreshingStarters.value = true
+                try {
+                    val prompt = PromptBuilder.buildSocraticTopicSuggestionsPrompt(_starterSuggestions.value)
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _starterSuggestions.value = parsed.take(3)
+                        _isStarterAiGenerated.value = true
+                    } else {
+                        rotateFallbackStarters()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackStarters()
+                } finally {
+                    _isRefreshingStarters.value = false
+                }
+            }
+        } else {
+            rotateFallbackStarters()
+        }
+    }
+
+    private fun rotateFallbackStarters() {
+        starterPoolIndex = (starterPoolIndex + 1) % fallbackStarterPool.size
+        _starterSuggestions.value = fallbackStarterPool[starterPoolIndex]
+        _isStarterAiGenerated.value = false
+    }
+
+    private val fallbackInChatPool = listOf(
+        listOf(
+            "您的主張是否預設所有人追求相同目標？",
+            "若在生死存亡情境下，此原則仍適用嗎？",
+            "能否為您剛才的核心概念下個精確定義？"
+        ),
+        listOf(
+            "若直覺與理性推導矛盾，該依何者裁決？",
+            "依您所言，我們是否陷入了假二分謬誤？",
+            "若換作您的反對者，會提出何種質疑？"
+        ),
+        listOf(
+            "這樣的推論是否混淆了事實與價值判斷？",
+            "若此規則普遍化，是否會導出荒謬後果？",
+            "我們是在討論理想本質還是現實妥協？"
+        )
+    )
+
+    private var inChatPoolIndex = 0
+
+    private val _followUpSuggestions = MutableStateFlow(fallbackInChatPool.first())
+    val followUpSuggestions: StateFlow<List<String>> = _followUpSuggestions.asStateFlow()
+
+    private val _isFollowUpAiGenerated = MutableStateFlow(false)
+    val isFollowUpAiGenerated: StateFlow<Boolean> = _isFollowUpAiGenerated.asStateFlow()
+
+    private val _isRefreshingFollowUps = MutableStateFlow(false)
+    val isRefreshingFollowUps: StateFlow<Boolean> = _isRefreshingFollowUps.asStateFlow()
+
+    fun refreshFollowUpSuggestions(customHistory: List<ChatMessage>? = null) {
+        if (_isRefreshingFollowUps.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        val msgs = customHistory ?: chatMessages.value
+        if (isLoaded && msgs.isNotEmpty()) {
+            viewModelScope.launch {
+                _isRefreshingFollowUps.value = true
+                try {
+                    val prompt = PromptBuilder.buildSocraticFollowUpSuggestionsPrompt(msgs, _followUpSuggestions.value)
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _followUpSuggestions.value = parsed.take(3)
+                        _isFollowUpAiGenerated.value = true
+                    } else {
+                        rotateFallbackInChat()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackInChat()
+                } finally {
+                    _isRefreshingFollowUps.value = false
+                }
+            }
+        } else {
+            rotateFallbackInChat()
+        }
+    }
+
+    private fun rotateFallbackInChat() {
+        inChatPoolIndex = (inChatPoolIndex + 1) % fallbackInChatPool.size
+        _followUpSuggestions.value = fallbackInChatPool[inChatPoolIndex]
+        _isFollowUpAiGenerated.value = false
+    }
+
     val isTtsPlaying: StateFlow<Boolean> = ttsManager.isPlaying
     val isTtsPaused: StateFlow<Boolean> = ttsManager.isPaused
     val currentSpeakingUtteranceId: StateFlow<String?> = ttsManager.currentSpeakingUtteranceId
@@ -211,6 +340,12 @@ class SocraticViewModel(
                     if (ttsSettings.enabled && ttsSettings.autoSpeak) {
                         ttsManager.speak(finalContent, "auto_${System.currentTimeMillis()}", ttsSettings)
                     }
+
+                    // Auto-generate contextual follow-up inspiration questions
+                    val updatedTurnHistory = historyList +
+                        ChatMessage(role = "user", content = userText.trim(), category = "socratic") +
+                        ChatMessage(role = "assistant", content = finalContent, category = "socratic")
+                    refreshFollowUpSuggestions(updatedTurnHistory)
                 }
             } catch (e: CancellationException) {
                 val partialContent = responseBuilder.toString().trim()

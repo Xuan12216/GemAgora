@@ -442,4 +442,94 @@ class GemAgoraQualityTests {
         val sixDigitSettings = defaultSettings.copy(pinLength = 6)
         assertEquals(6, sixDigitSettings.pinLength)
     }
+
+    @Test
+    fun testPhilosophicalParserSuggestionsXmlTags() {
+        val raw = """
+            <think>Thinking about suggestions...</think>
+            <suggestion>科技如何重新定義了人類的「存在」？</suggestion>
+            <suggestion>若所有意識皆可上傳，靈魂是否仍然獨特？</suggestion>
+            <suggestion>自由意志在決定論演算法下是否僅為錯覺？</suggestion>
+        """.trimIndent()
+
+        val suggestions = PhilosophicalParser.parseSuggestions(raw)
+        assertEquals(3, suggestions.size)
+        assertEquals("科技如何重新定義了人類的「存在」？", suggestions[0])
+        assertEquals("若所有意識皆可上傳，靈魂是否仍然獨特？", suggestions[1])
+        assertEquals("自由意志在決定論演算法下是否僅為錯覺？", suggestions[2])
+    }
+
+    @Test
+    fun testPhilosophicalParserSuggestionsBulletedAndNumbered() {
+        val raw = """
+            以下是一些深度的追問角度：
+            1. 效益主義是否可能導致對少數群體的合法犧牲？
+            2. 義務論在面對兩難抉擇時是否過於僵化？
+            - 德行論如何界定情境中的「中道」？
+            • 我們能真正擺脫自身處境的歷史局限性嗎？
+        """.trimIndent()
+
+        val suggestions = PhilosophicalParser.parseSuggestions(raw)
+        assertEquals(4, suggestions.size)
+        assertEquals("效益主義是否可能導致對少數群體的合法犧牲？", suggestions[0])
+        assertEquals("義務論在面對兩難抉擇時是否過於僵化？", suggestions[1])
+        assertEquals("德行論如何界定情境中的「中道」？", suggestions[2])
+        assertEquals("我們能真正擺脫自身處境的歷史局限性嗎？", suggestions[3])
+    }
+
+    @Test
+    fun testPhilosophicalParserTaggedSuggestionsPipeAndBrackets() {
+        val rawPipe = """
+            <suggestion>大家都這樣做，肯定沒問題 || 從眾效應</suggestion>
+            <suggestion>你沒窮過，沒資格討論貧窮問題 || 訴諸人身</suggestion>
+        """.trimIndent()
+
+        val parsedPipe = PhilosophicalParser.parseTaggedSuggestions(rawPipe)
+        assertEquals(2, parsedPipe.size)
+        assertEquals("大家都這樣做，肯定沒問題", parsedPipe[0].first)
+        assertEquals("從眾效應", parsedPipe[0].second)
+        assertEquals("你沒窮過，沒資格討論貧窮問題", parsedPipe[1].first)
+        assertEquals("訴諸人身", parsedPipe[1].second)
+
+        val rawBrackets = """
+            1. 專家都說了這絕對安全（訴諸權威）
+            2. 不是支持我們就是我們的敵人【黑白謬誤】
+            3. 這件事情古來有之，不需要質疑
+        """.trimIndent()
+
+        val parsedBrackets = PhilosophicalParser.parseTaggedSuggestions(rawBrackets)
+        assertEquals(3, parsedBrackets.size)
+        assertEquals("專家都說了這絕對安全", parsedBrackets[0].first)
+        assertEquals("訴諸權威", parsedBrackets[0].second)
+        assertEquals("不是支持我們就是我們的敵人", parsedBrackets[1].first)
+        assertEquals("黑白謬誤", parsedBrackets[1].second)
+        assertEquals("這件事情古來有之，不需要質疑", parsedBrackets[2].first)
+        assertEquals("典型言論", parsedBrackets[2].second)
+    }
+
+    @Test
+    fun testPhilosophicalParserLengthClamping() {
+        val longSentence = "這是一個非常非常長而且超過了字數限制的超長哲學追問句子，應該被自動截斷？"
+        val raw = "1. $longSentence"
+        val parsed = PhilosophicalParser.parseSuggestions(raw, maxChars = 15)
+        assertEquals(1, parsed.size)
+        assertTrue("Output should end with ellipsis: ${parsed[0]}", parsed[0].endsWith("…"))
+        assertTrue("Output length should be <= 15, got ${parsed[0].length}", parsed[0].length <= 15)
+    }
+
+    @Test
+    fun testPromptBuilderSuggestionExclusions() {
+        val exclude = listOf("責任與無常的對峙", "內在德性與道之自然")
+        val roundTablePrompt = com.example.gemagora.ai.PromptBuilder.buildRoundTableTopicSuggestionsPrompt(exclude)
+        assertTrue(roundTablePrompt.contains("【避免重複】"))
+        assertTrue(roundTablePrompt.contains("責任與無常的對峙"))
+        assertTrue(roundTablePrompt.contains("內在德性與道之自然"))
+
+        val socraticPrompt = com.example.gemagora.ai.PromptBuilder.buildSocraticTopicSuggestionsPrompt(exclude)
+        assertTrue(socraticPrompt.contains("【避免重複】"))
+        assertTrue(socraticPrompt.contains("責任與無常的對峙"))
+
+        val noExcludePrompt = com.example.gemagora.ai.PromptBuilder.buildRoundTableTopicSuggestionsPrompt(emptyList())
+        assertFalse(noExcludePrompt.contains("【避免重複】"))
+    }
 }

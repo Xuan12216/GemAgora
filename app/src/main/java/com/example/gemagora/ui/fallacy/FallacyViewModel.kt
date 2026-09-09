@@ -87,6 +87,135 @@ class FallacyViewModel(
     private var currentJob: Job? = null
     private var followUpJob: Job? = null
 
+    private val fallbackSamplePool = listOf(
+        listOf(
+            "不考上頂尖大學，人生就徹底完了" to "滑坡謬誤",
+            "你批評這部電影，那你自己去拍一部啊" to "訴諸人身",
+            "非黑即白：不支持我們就是敵人" to "假二分法"
+        ),
+        listOf(
+            "大家都搶買這款保健品，肯定有效" to "訴諸群眾",
+            "科學無法證明沒外星人，所以必然有" to "訴諸無知",
+            "你天天熬夜，憑什麼勸我早睡" to "你也一樣"
+        ),
+        listOf(
+            "古人用草藥活了幾千年，西藥都是毒" to "訴諸傳統",
+            "新法上路後景氣變差，全是法規的錯" to "後此謬誤",
+            "這本古籍必然正確，因它是神聖的" to "循環論證"
+        )
+    )
+
+    private var samplePoolIndex = 0
+
+    private val _sampleArguments = MutableStateFlow(fallbackSamplePool.first())
+    val sampleArguments: StateFlow<List<Pair<String, String>>> = _sampleArguments.asStateFlow()
+
+    private val _isSampleAiGenerated = MutableStateFlow(false)
+    val isSampleAiGenerated: StateFlow<Boolean> = _isSampleAiGenerated.asStateFlow()
+
+    private val _isRefreshingSamples = MutableStateFlow(false)
+    val isRefreshingSamples: StateFlow<Boolean> = _isRefreshingSamples.asStateFlow()
+
+    fun refreshSampleArguments() {
+        if (_isRefreshingSamples.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        if (isLoaded) {
+            viewModelScope.launch {
+                _isRefreshingSamples.value = true
+                try {
+                    val prompt = PromptBuilder.buildFallacySampleSuggestionsPrompt(_sampleArguments.value.map { it.first })
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseTaggedSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _sampleArguments.value = parsed.take(3)
+                        _isSampleAiGenerated.value = true
+                    } else {
+                        rotateFallbackSamples()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackSamples()
+                } finally {
+                    _isRefreshingSamples.value = false
+                }
+            }
+        } else {
+            rotateFallbackSamples()
+        }
+    }
+
+    private fun rotateFallbackSamples() {
+        samplePoolIndex = (samplePoolIndex + 1) % fallbackSamplePool.size
+        _sampleArguments.value = fallbackSamplePool[samplePoolIndex]
+        _isSampleAiGenerated.value = false
+    }
+
+    private val fallbackFollowUpPool = listOf(
+        listOf(
+            "請提供一句得體但一針見血的反駁話術",
+            "如何將此論述重構為健全論證？",
+            "若對方偷換概念，該如何維持主導權？"
+        ),
+        listOf(
+            "該如何指出其隱含的無效前提？",
+            "如何用反詰法讓對方發現自身矛盾？",
+            "此論點是否有可取之處？如何善意理解？"
+        ),
+        listOf(
+            "如何用類比論證凸顯其邏輯荒謬？",
+            "如何依同情理解原則進行理性改寫？",
+            "正式辯論中如何進行定點技術拆解？"
+        )
+    )
+
+    private var followUpPoolIndex = 0
+
+    private val _followUpSuggestions = MutableStateFlow(fallbackFollowUpPool.first())
+    val followUpSuggestions: StateFlow<List<String>> = _followUpSuggestions.asStateFlow()
+
+    private val _isFollowUpAiGenerated = MutableStateFlow(false)
+    val isFollowUpAiGenerated: StateFlow<Boolean> = _isFollowUpAiGenerated.asStateFlow()
+
+    private val _isRefreshingFollowUpSuggestions = MutableStateFlow(false)
+    val isRefreshingFollowUpSuggestions: StateFlow<Boolean> = _isRefreshingFollowUpSuggestions.asStateFlow()
+
+    fun refreshFollowUpSuggestions() {
+        if (_isRefreshingFollowUpSuggestions.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        val arg = _argumentInput.value.trim()
+        if (isLoaded && arg.isNotBlank()) {
+            viewModelScope.launch {
+                _isRefreshingFollowUpSuggestions.value = true
+                try {
+                    val prompt = PromptBuilder.buildFallacyFollowUpSuggestionsPrompt(arg, _analysisResult.value, _followUpSuggestions.value)
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _followUpSuggestions.value = parsed.take(3)
+                        _isFollowUpAiGenerated.value = true
+                    } else {
+                        rotateFallbackFollowUps()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackFollowUps()
+                } finally {
+                    _isRefreshingFollowUpSuggestions.value = false
+                }
+            }
+        } else {
+            rotateFallbackFollowUps()
+        }
+    }
+
+    private fun rotateFallbackFollowUps() {
+        followUpPoolIndex = (followUpPoolIndex + 1) % fallbackFollowUpPool.size
+        _followUpSuggestions.value = fallbackFollowUpPool[followUpPoolIndex]
+        _isFollowUpAiGenerated.value = false
+    }
+
     fun setArgumentInput(text: String) {
         _argumentInput.value = text
     }

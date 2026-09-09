@@ -35,7 +35,7 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GemAgora-v1.0.0-apk
+          name: GemAgora-v1.0.1-apk
           path: app/build/outputs/apk/release/app-release.apk
 
       - name: Create GitHub Release (on tag)

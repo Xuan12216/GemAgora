@@ -119,6 +119,107 @@ class ThoughtExperimentViewModel(
     private var currentJob: Job? = null
     private var followUpJob: Job? = null
 
+    private val fallbackFollowUpMap = mapOf(
+        "trolley" to listOf(
+            listOf(
+                "若軌道上是至親，道德義務如何抉擇？",
+                "效益計算與不可殺人原則如何平衡？",
+                "選擇閉眼不作為，是否仍有道德責任？"
+            ),
+            listOf(
+                "推人落橋與拉桿轉向，本質區別何在？",
+                "若由 AI 自動決策，責任歸屬於誰？",
+                "若被犧牲者是偉大學者，權衡會改變嗎？"
+            )
+        ),
+        "veil_of_ignorance" to listOf(
+            listOf(
+                "無知之幕下，人們會甘願為冒險賭博嗎？",
+                "如何界定最弱勢？心靈痛苦算不算？",
+                "若天賦純屬偶然，後天努力如何獎賞？"
+            ),
+            listOf(
+                "絕對平等的分配是否會扼殺社會創新？",
+                "代際正義：我們對未來後代有何義務？",
+                "現實中可能真正褪去自身偏見之幕嗎？"
+            )
+        ),
+        "ship_of_theseus" to listOf(
+            listOf(
+                "舊零件重組的船與換新板的船誰是本尊？",
+                "人細胞數年一換，何以維持同一自我？",
+                "若意識可數位上傳，哪一個才是我？"
+            ),
+            listOf(
+                "形式同一與物質同一，何者更為根本？",
+                "一個民族文化若全盤替換，它還是它嗎？",
+                "關係與記憶，是否才是同一性的錨點？"
+            )
+        ),
+        "brain_in_vat" to listOf(
+            listOf(
+                "若體驗機器完美無瑕，為何人們仍抗拒？",
+                "知覺可能皆為模擬，何以建立真實愛意？",
+                "莊周夢蝶與現代電腦模擬有何本質差異？"
+            ),
+            listOf(
+                "身處虛擬母體，存在主義者該反抗嗎？",
+                "虛擬世界的道德過錯在現實具罪惡嗎？",
+                "真實的價值在於物理性還是在於承擔？"
+            )
+        )
+    )
+
+    private var followUpPoolIndex = 0
+
+    private val _followUpSuggestions = MutableStateFlow(
+        fallbackFollowUpMap["trolley"]?.first() ?: emptyList()
+    )
+    val followUpSuggestions: StateFlow<List<String>> = _followUpSuggestions.asStateFlow()
+
+    private val _isFollowUpAiGenerated = MutableStateFlow(false)
+    val isFollowUpAiGenerated: StateFlow<Boolean> = _isFollowUpAiGenerated.asStateFlow()
+
+    private val _isRefreshingFollowUpSuggestions = MutableStateFlow(false)
+    val isRefreshingFollowUpSuggestions: StateFlow<Boolean> = _isRefreshingFollowUpSuggestions.asStateFlow()
+
+    fun refreshFollowUpSuggestions() {
+        if (_isRefreshingFollowUpSuggestions.value) return
+        val isLoaded = gemmaHelper.loadState.value is com.example.gemagora.data.model.ModelLoadState.Loaded
+        val exp = _selectedExperiment.value
+        if (isLoaded && _deductionResult.value.isNotBlank()) {
+            viewModelScope.launch {
+                _isRefreshingFollowUpSuggestions.value = true
+                try {
+                    val prompt = PromptBuilder.buildThoughtExperimentFollowUpSuggestionsPrompt(exp.title, getVariablesSummary(), _followUpSuggestions.value)
+                    val reply = gemmaHelper.generateReply(prompt)
+                    val parsed = com.example.gemagora.ai.PhilosophicalParser.parseSuggestions(reply)
+                    if (parsed.isNotEmpty()) {
+                        _followUpSuggestions.value = parsed.take(3)
+                        _isFollowUpAiGenerated.value = true
+                    } else {
+                        rotateFallbackFollowUps(exp.id)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    rotateFallbackFollowUps(exp.id)
+                } finally {
+                    _isRefreshingFollowUpSuggestions.value = false
+                }
+            }
+        } else {
+            rotateFallbackFollowUps(exp.id)
+        }
+    }
+
+    private fun rotateFallbackFollowUps(expId: String) {
+        val pools = fallbackFollowUpMap[expId] ?: fallbackFollowUpMap["trolley"] ?: return
+        followUpPoolIndex = (followUpPoolIndex + 1) % pools.size
+        _followUpSuggestions.value = pools[followUpPoolIndex]
+        _isFollowUpAiGenerated.value = false
+    }
+
     init {
         selectExperiment(experiments.first())
     }
@@ -132,6 +233,7 @@ class ThoughtExperimentViewModel(
         _deductionResult.value = ""
         _followUpTurns.value = emptyList()
         _streamingFollowUp.value = null
+        _followUpSuggestions.value = fallbackFollowUpMap[exp.id]?.first() ?: emptyList()
     }
 
     fun selectExperiment(exp: ThoughtExperiment) {
