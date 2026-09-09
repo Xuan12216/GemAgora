@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.data.model.JournalEntry
 import com.example.gemagora.ui.components.ThinkingContent
+import com.example.gemagora.ui.components.MarkdownParser
 import com.example.gemagora.ui.components.TtsPlayerControl
 import com.example.gemagora.ui.components.CopyIconButton
 import com.example.gemagora.ui.components.SuggestionFlexBox
@@ -630,9 +631,10 @@ fun JournalCard(
                             }
                         } else {
                             val cleanPreview = remember(displayGuidance) {
-                                displayGuidance
+                                val unchanneled = displayGuidance
                                     .replace(Regex("<\\|?channel\\|?>[a-zA-Z0-9_]*"), "")
                                     .trim()
+                                MarkdownParser.stripMarkdown(unchanneled)
                             }
                             Text(
                                 text = cleanPreview,

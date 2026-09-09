@@ -35,8 +35,8 @@ fun ThinkingContent(
 
     if (matches.isEmpty()) {
         SelectionContainer {
-            Text(
-                text = rawText,
+            MarkdownText(
+                markdown = rawText,
                 style = contentTextStyle,
                 modifier = modifier
             )
@@ -155,8 +155,8 @@ fun ThinkingContent(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             SelectionContainer(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = thinkingText,
+                                MarkdownText(
+                                    markdown = thinkingText,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
                                 )
@@ -176,7 +176,7 @@ fun ThinkingContent(
 
         if (contentText.isNotBlank()) {
             SelectionContainer {
-                Text(text = contentText, style = contentTextStyle)
+                MarkdownText(markdown = contentText, style = contentTextStyle)
             }
         }
     }

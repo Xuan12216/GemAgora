@@ -29,6 +29,7 @@ import com.example.gemagora.ui.components.HistoryBottomSheet
 import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
 import com.example.gemagora.ui.components.CopyIconButton
+import com.example.gemagora.ui.components.MarkdownText
 import com.example.gemagora.ui.components.SuggestionFlexBox
 import com.example.gemagora.ui.components.SuggestionTaggedFlexBox
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -417,7 +418,7 @@ fun FallacyScreen(
                                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
                                                     }
-                                                    Text(item.explanation, style = MaterialTheme.typography.bodyMedium)
+                                                    MarkdownText(markdown = item.explanation, style = MaterialTheme.typography.bodyMedium)
                                                 }
                                             }
                                         }
@@ -451,7 +452,7 @@ fun FallacyScreen(
                                             Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                             Text("論證健全性 (Soundness) 總評", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                         }
-                                        Text(parsedResult.evaluation, style = MaterialTheme.typography.bodyMedium)
+                                        MarkdownText(markdown = parsedResult.evaluation, style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
                             }
@@ -485,7 +486,7 @@ fun FallacyScreen(
                                                         )
                                                     )
                                                     Spacer(Modifier.width(10.dp))
-                                                    Text(premise, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
+                                                    MarkdownText(markdown = premise, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
                                                 }
                                             }
                                         }
@@ -506,7 +507,7 @@ fun FallacyScreen(
                                                         )
                                                     )
                                                     Spacer(Modifier.width(10.dp))
-                                                    Text(parsedResult.conclusion, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
+                                                    MarkdownText(markdown = parsedResult.conclusion, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
                                                 }
                                             }
                                         }
@@ -526,7 +527,7 @@ fun FallacyScreen(
                                             Icon(Icons.Default.Psychology, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                             Text("反思思考題與論述修正方向", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                         }
-                                        Text(parsedResult.counter, style = MaterialTheme.typography.bodyMedium)
+                                        MarkdownText(markdown = parsedResult.counter, style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
                             }
@@ -613,7 +614,7 @@ fun FallacyScreen(
                                                     }
                                                 }
                                                 SelectionContainer {
-                                                    Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                    MarkdownText(markdown = assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
                                                 }
                                             }
                                         }
@@ -648,7 +649,7 @@ fun FallacyScreen(
                                             }
                                         }
                                         SelectionContainer {
-                                            Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                            MarkdownText(markdown = streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
                                         }
                                     }
                                 }

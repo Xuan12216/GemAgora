@@ -29,6 +29,7 @@ import com.example.gemagora.ui.components.HistoryBottomSheet
 import com.example.gemagora.ui.components.ThinkingContent
 import com.example.gemagora.ui.components.TtsPlayerControl
 import com.example.gemagora.ui.components.CopyIconButton
+import com.example.gemagora.ui.components.MarkdownText
 import com.example.gemagora.ui.components.SuggestionFlexBox
 import androidx.compose.foundation.text.selection.SelectionContainer
 
@@ -512,8 +513,8 @@ fun ThoughtExperimentScreen(
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
                                 SelectionContainer {
-                                    Text(
-                                        text = p.content,
+                                    MarkdownText(
+                                        markdown = p.content,
                                         style = MaterialTheme.typography.bodyMedium,
                                         lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.25f
                                     )
@@ -643,7 +644,10 @@ fun ThoughtExperimentScreen(
                                             }
                                         }
                                         SelectionContainer {
-                                            Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                            MarkdownText(
+                                                markdown = streamingFollowUp ?: "",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
                                         }
                                     }
                                 }
@@ -729,7 +733,10 @@ fun ThoughtExperimentScreen(
                                                     }
                                                 }
                                                 SelectionContainer {
-                                                    Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                                    MarkdownText(
+                                                        markdown = assistantTurn.content,
+                                                        style = MaterialTheme.typography.bodyMedium
+                                                    )
                                                 }
                                             }
                                         }

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gemagora.ai.PhilosophicalParser
 import com.example.gemagora.ui.components.ThinkingContent
+import com.example.gemagora.ui.components.MarkdownText
 import com.example.gemagora.ui.components.TtsPlayerControl
 import com.example.gemagora.ui.components.CopyIconButton
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -484,7 +485,7 @@ fun RoundTableScreen(
                                             }
                                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                             SelectionContainer {
-                                                Text(speech.content, style = MaterialTheme.typography.bodyMedium)
+                                                MarkdownText(markdown = speech.content, style = MaterialTheme.typography.bodyMedium)
                                             }
                                         }
                                     }
@@ -564,7 +565,7 @@ fun RoundTableScreen(
                                             }
                                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                                             SelectionContainer {
-                                                Text(item.content, style = MaterialTheme.typography.bodyMedium)
+                                                MarkdownText(markdown = item.content, style = MaterialTheme.typography.bodyMedium)
                                             }
                                         }
                                     }
@@ -594,7 +595,7 @@ fun RoundTableScreen(
                                             )
                                         }
                                         SelectionContainer {
-                                            Text(parsedResult.crossExamination, style = MaterialTheme.typography.bodyMedium)
+                                            MarkdownText(markdown = parsedResult.crossExamination, style = MaterialTheme.typography.bodyMedium)
                                         }
                                     }
                                 }
@@ -651,7 +652,7 @@ fun RoundTableScreen(
                                         }
                                         HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
                                         SelectionContainer {
-                                            Text(parsedResult.synthesis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal)
+                                            MarkdownText(markdown = parsedResult.synthesis, style = MaterialTheme.typography.bodyMedium)
                                         }
                                     }
                                 }
@@ -803,7 +804,7 @@ fun RoundTableScreen(
                                         }
                                     }
                                     SelectionContainer {
-                                        Text(assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
+                                        MarkdownText(markdown = assistantTurn.content, style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
                             }
@@ -838,7 +839,7 @@ fun RoundTableScreen(
                                 }
                             }
                             SelectionContainer {
-                                Text(streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
+                                MarkdownText(markdown = streamingFollowUp ?: "", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
